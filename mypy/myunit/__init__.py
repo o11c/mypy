@@ -81,7 +81,7 @@ def assert_raises(typ: type, *rest: Any) -> None:
     """
     # Parse arguments.
     msg = None  # type: str
-    if isinstance(rest[0], str) or rest[0] is None:
+    if not callable(rest[0]):
         msg = rest[0]
         rest = rest[1:]
     f = rest[0]
