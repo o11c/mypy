@@ -107,7 +107,9 @@ class TypeAnalyser(TypeVisitor[Type]):
                 return self.analyze_callable_type(t)
             elif sym.kind == TYPE_ALIAS:
                 # TODO: Generic type aliases.
-                return sym.type_override
+                rv = sym.type
+                assert rv is not None, repr(sym)
+                return rv
             elif not isinstance(sym.node, TypeInfo):
                 name = sym.fullname
                 if name is None:
@@ -151,6 +153,7 @@ class TypeAnalyser(TypeVisitor[Type]):
 
     def visit_type_list(self, t: TypeList) -> Type:
         self.fail('Invalid type', t)
+        return t
 
     def visit_instance(self, t: Instance) -> Type:
         return t

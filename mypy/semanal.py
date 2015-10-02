@@ -759,7 +759,7 @@ class SemanticAnalyzer(NodeVisitor):
                         return
                     symbol = SymbolTableNode(node.kind, node.node,
                                              self.cur_mod_id,
-                                             node.type_override)
+                                             node.type)
                     self.add_symbol(as_id, symbol, i)
                 else:
                     message = "Module has no attribute '{}'".format(id)

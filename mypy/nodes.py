@@ -1657,7 +1657,7 @@ class SymbolTableNode:
         elif isinstance(node, Decorator):
             return (cast(Decorator, node)).var.type
         else:
-            return None
+            return mypy.types.AnyType()
 
     def __str__(self) -> str:
         s = '{}/{}'.format(node_kinds[self.kind], short_type(self.node))
