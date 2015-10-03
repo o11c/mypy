@@ -54,7 +54,16 @@ def good_repr(obj: object) -> str:
 
 def assert_equal(a: object, b: object, fmt: str = '{} != {}') -> None:
     if a != b:
-        raise AssertionFailure(fmt.format(good_repr(a), good_repr(b)))
+        diff = ''
+        if isinstance(a, str):
+            if isinstance(b, str):
+                import difflib
+                import io
+                a_list = io.StringIO(a).readlines()
+                b_list = io.StringIO(b).readlines()
+                diff = '\n' + ''.join(difflib.unified_diff(a_list, b_list))
+                fmt += '{diff}'
+        raise AssertionFailure(fmt.format(good_repr(a), good_repr(b), diff=diff))
 
 
 def assert_not_equal(a: object, b: object, fmt: str = '{} == {}') -> None:
