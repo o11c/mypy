@@ -265,7 +265,7 @@ def add_libpython(driver: Driver) -> None:
     seen = set()  # type: Set[str]
     for version in driver.versions:
         libpython_dir = join('lib-python', version)
-        for f in find_files(libpython_dir, prefix='test_', suffix='.py'):
+        for f in find_files(libpython_dir, prefix='test_', suffix='.pyi'):
             module = file_to_module(f, libpython_dir)
             if module not in seen:
                 seen.add(module)
@@ -377,7 +377,7 @@ def main() -> None:
     ]:
         before = len(driver.waiter.queue)
         adder(driver)
-        if whitelist == ['']:
+        if whitelist == [''] and blacklist == []:
             assert len(driver.waiter.queue) != before, 'no tasks in %s' % adder.__name__
 
     if not list_only:

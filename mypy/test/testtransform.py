@@ -6,7 +6,7 @@ from typing import Dict, List
 
 from mypy import build
 from mypy.myunit import Suite
-from mypy.test.helpers import assert_string_arrays_equal, testfile_pyversion
+from mypy.test.helpers import assert_string_arrays_equal, testfile_python_implementation
 from mypy.test.data import parse_test_cases
 from mypy.test.config import test_data_prefix, test_temp_dir
 from mypy.errors import CompileError
@@ -41,7 +41,7 @@ def test_transform(testcase):
         result = build.build('main',
                              target=build.SEMANTIC_ANALYSIS,
                              program_text=src,
-                             pyversion=testfile_pyversion(testcase.file),
+                             implementation=testfile_python_implementation(testcase.file),
                              flags=[build.TEST_BUILTINS],
                              alt_lib_path=test_temp_dir)
         a = []
@@ -53,9 +53,9 @@ def test_transform(testcase):
             # Omit the builtins module and files with a special marker in the
             # path.
             # TODO the test is not reliable
-            if (not f.path.endswith((os.sep + 'builtins.py',
-                                     'typing.py',
-                                     'abc.py'))
+            if (not f.path.endswith((os.sep + 'builtins.pyi',
+                                     'typing.pyi',
+                                     'abc.pyi'))
                     and not os.path.basename(f.path).startswith('_')
                     and not os.path.splitext(
                         os.path.basename(f.path))[0].endswith('_')):
