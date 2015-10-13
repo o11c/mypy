@@ -8,7 +8,7 @@ import os.path
 import re
 
 
-from mypy.stubutil import (
+from mypy.stubgen.stubutil import (
     parse_all_signatures, find_unique_signatures, is_c_module, write_header,
     infer_sig_from_docstring
 )

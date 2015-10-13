@@ -44,8 +44,10 @@ from mypy.nodes import (
     IntExpr, UnaryExpr, StrExpr, BytesExpr, NameExpr, FloatExpr, MemberExpr, TupleExpr,
     ListExpr, ComparisonExpr, CallExpr, ClassDef, ARG_STAR, ARG_STAR2, ARG_NAMED
 )
-from mypy.stubgenc import parse_all_signatures, find_unique_signatures, generate_stub_for_c_module
-from mypy.stubutil import is_c_module, write_header
+from mypy.stubgen.stubgenc import (
+    parse_all_signatures, find_unique_signatures, generate_stub_for_c_module
+)
+from mypy.stubgen.stubutil import is_c_module, write_header
 
 
 def generate_stub(path, output_dir, _all_=None, target=None, add_header=False, module=None,
@@ -497,7 +499,3 @@ def main():
 
 def usage():
     raise SystemExit('usage: python3 -m mypy.stubgen [--docpath path] [--py2] module ...')
-
-
-if __name__ == '__main__':
-    main()

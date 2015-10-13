@@ -16,8 +16,8 @@ from mypy.test import config
 from mypy.parse import parse
 from mypy.errors import CompileError
 from mypy.stubgen import generate_stub, generate_stub_for_module
-from mypy.stubgenc import infer_method_sig
-from mypy.stubutil import (
+from mypy.stubgen.stubgenc import infer_method_sig
+from mypy.stubgen.stubutil import (
     parse_signature, parse_all_signatures, build_signature, find_unique_signatures,
     infer_sig_from_docstring
 )
