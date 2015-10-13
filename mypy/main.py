@@ -65,6 +65,16 @@ def type_check_only(path: str, module: str, program_text: str,
                 python_path=options.python_path)
 
 
+def get_implementation(python_executable: str, force_py2: bool) -> Implementation:
+    if python_executable is not None:
+        implementation = Implementation(python_executable)
+        if force_py2 and implementation.base_dialect.major != 2:
+            usage('given --python-executable is not --py2')
+    else:
+        implementation = default_implementation(force_py2=force_py2)
+    return implementation
+
+
 def process_options(args: List[str]) -> Tuple[str, str, str, Options]:
     """Process command line arguments.
 
@@ -93,9 +103,11 @@ def process_options(args: List[str]) -> Tuple[str, str, str, Options]:
             args = args[2:]
         elif args[0] == '-m' and args[1:]:
             options.build_flags.append(build.MODULE)
+            options.implementation = get_implementation(python_executable, force_py2)
             return None, args[1], None, options
         elif args[0] == '-c' and args[1:]:
             options.build_flags.append(build.PROGRAM_TEXT)
+            options.implementation = get_implementation(python_executable, force_py2)
             return None, None, args[1], options
         elif args[0] in ('-h', '--help'):
             help = True
@@ -135,13 +147,7 @@ def process_options(args: List[str]) -> Tuple[str, str, str, Options]:
     if args[1:]:
         usage('Extra argument: {}'.format(args[1]))
 
-    if python_executable is not None:
-        options.implementation = Implementation(python_executable)
-        if force_py2 and options.implementation.base_dialect.major != 2:
-            usage('given --python-executable is not --py2')
-    else:
-        options.implementation = default_implementation(force_py2=force_py2)
-
+    options.implementation = get_implementation(python_executable, force_py2)
     return args[0], None, None, options
 
 

@@ -5,8 +5,8 @@ import os.path
 from typing import Dict, List
 
 from mypy import build
-from mypy.myunit import Suite
-from mypy.test.helpers import assert_string_arrays_equal, testfile_python_implementation
+from mypy.myunit import Suite, SkipTestCaseException
+from mypy.test.helpers import assert_string_arrays_equal, testcase_python_implementation
 from mypy.test.data import parse_test_cases
 from mypy.test.config import test_data_prefix, test_temp_dir
 from mypy.errors import CompileError
@@ -35,13 +35,14 @@ class TransformSuite(Suite):
 
 def test_transform(testcase):
     """Perform an identity transform test case."""
+    implementation = testcase_python_implementation(testcase)
 
     try:
         src = '\n'.join(testcase.input)
         result = build.build('main',
                              target=build.SEMANTIC_ANALYSIS,
                              program_text=src,
-                             implementation=testfile_python_implementation(testcase.file),
+                             implementation=implementation,
                              flags=[build.TEST_BUILTINS],
                              alt_lib_path=test_temp_dir)
         a = []

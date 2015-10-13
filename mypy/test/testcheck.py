@@ -64,7 +64,8 @@ class TypeCheckSuite(Suite):
 
     def run_test(self, testcase):
         a = []
-        implementation = testcase_python_implementation(testcase.file, testcase.name)
+        implementation = testcase_python_implementation(testcase)
+
         program_text = '\n'.join(testcase.input)
         module_name, program_name, program_text = self.parse_options(program_text)
         try:

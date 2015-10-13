@@ -21,7 +21,7 @@ from mypy.build import is_installed
 from mypy.myunit import Suite, SkipTestCaseException
 from mypy.test.config import test_data_prefix, test_temp_dir
 from mypy.test.data import parse_test_cases
-from mypy.test.helpers import assert_string_arrays_equal
+from mypy.test.helpers import assert_string_arrays_equal, testcase_python_implementation
 
 
 # Files which contain test case descriptions.
@@ -30,11 +30,6 @@ python_eval_files = ['pythoneval.test',
 
 python_34_eval_files = ['pythoneval-asyncio.test',
                         'pythoneval-enum.test']
-
-# Path to Python 3 interpreter
-python3_path = sys.executable
-
-default_python2_interpreter = ['python2', 'python', '/usr/bin/python']
 
 
 class PythonEvaluationSuite(Suite):
@@ -51,19 +46,11 @@ class PythonEvaluationSuite(Suite):
 
 
 def test_python_evaluation(testcase):
-    python2_interpreter = try_find_python2_interpreter()
-    # Use Python 2 interpreter if running a Python 2 test case.
-    if testcase.name.lower().endswith('python2'):
-        if not python2_interpreter:
-            # Skip, can't find a Python 2 interpreter.
-            raise SkipTestCaseException()
-        interpreter = python2_interpreter
-        args = ['--py2']
-        py2 = True
-    else:
-        interpreter = python3_path
-        args = []
-        py2 = False
+    implementation = testcase_python_implementation(testcase)
+
+    interpreter = implementation.executable
+    py2 = implementation.base_dialect.major == 2
+
     # Write the program to a file.
     program = '_program.py'
     program_path = os.path.join(test_temp_dir, program)
@@ -72,9 +59,7 @@ def test_python_evaluation(testcase):
             file.write('{}\n'.format(s))
     # Type check the program.
     # This uses the same PYTHONPATH as the current process.
-    process = subprocess.Popen([python3_path,
-                                '-m', 'mypy']
-                            + args + [program],
+    process = subprocess.Popen([sys.executable, '-m', 'mypy', program],
                                stdout=subprocess.PIPE,
                                stderr=subprocess.STDOUT,
                                cwd=test_temp_dir)
@@ -105,20 +90,3 @@ def test_python_evaluation(testcase):
     assert_string_arrays_equal(testcase.output, out,
                                'Invalid output ({}, line {})'.format(
                                    testcase.file, testcase.line))
-
-
-def try_find_python2_interpreter():
-    for interpreter in default_python2_interpreter:
-        try:
-            process = subprocess.Popen([interpreter, '-V'], stdout=subprocess.PIPE,
-                                       stderr=subprocess.STDOUT)
-            stdout, stderr = process.communicate()
-            if b'Python 2.7' in stdout:
-                if is_installed():
-                    print('WARNING: python2 interpreter found, but'
-                        ' typing is not installed for python2')
-                    return None
-                return interpreter
-        except OSError:
-            pass
-    return None
