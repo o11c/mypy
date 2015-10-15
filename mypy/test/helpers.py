@@ -2,11 +2,12 @@ import sys
 import re
 import os
 
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Optional, cast
 
 from mypy.syntax.dialect import Implementation, default_implementation
-from mypy.myunit import AssertionFailure
+from mypy.myunit import AssertionFailure, TestCase, SkipTestCaseException
 from mypy.test import config
+from mypy.test.data import DataDrivenTestCase
 
 
 # AssertStringArraysEqual displays special line alignment helper messages if
@@ -239,21 +240,24 @@ def num_skipped_suffix_lines(a1: List[str], a2: List[str]) -> int:
     return max(0, num_eq - 4)
 
 
-DEFAULT_IMPLEMENTATION_PYTHON2 = default_implementation(force_py2=True)
-DEFAULT_IMPLEMENTATION_PYTHON3 = default_implementation()
-assert DEFAULT_IMPLEMENTATION_PYTHON2.base_dialect.major == 2
-assert DEFAULT_IMPLEMENTATION_PYTHON3.base_dialect.major == 3
+DEFAULT_IMPLEMENTATION = default_implementation()
+DEFAULT_IMPLEMENTATION_PYTHON2 = None  # type: Optional[Implementation]
+DEFAULT_IMPLEMENTATION_PYTHON3 = None  # type: Optional[Implementation]
+if DEFAULT_IMPLEMENTATION.base_dialect.major == 2:
+    DEFAULT_IMPLEMENTATION_PYTHON2 = DEFAULT_IMPLEMENTATION
+else:
+    DEFAULT_IMPLEMENTATION_PYTHON3 = DEFAULT_IMPLEMENTATION
 
 
-def testfile_python_implementation(path: str) -> Implementation:
-    if path.endswith('python2.test'):
-        return DEFAULT_IMPLEMENTATION_PYTHON2
+def testcase_python_implementation(testcase_: TestCase) -> Implementation:
+    testcase = cast(DataDrivenTestCase, testcase_)
+    assert isinstance(testcase, DataDrivenTestCase)
+    if testcase.name.endswith('python2'):
+        rv = DEFAULT_IMPLEMENTATION_PYTHON2
+    elif testcase.file.endswith('python2.test'):
+        rv = DEFAULT_IMPLEMENTATION_PYTHON2
     else:
-        return DEFAULT_IMPLEMENTATION_PYTHON3
-
-
-def testcase_python_implementation(path: str, testcase_name: str) -> Implementation:
-    if testcase_name.endswith('python2'):
-        return DEFAULT_IMPLEMENTATION_PYTHON2
-    else:
-        return testfile_python_implementation(path)
+        rv = DEFAULT_IMPLEMENTATION_PYTHON3
+    if rv is None:
+        raise SkipTestCaseException()
+    return rv

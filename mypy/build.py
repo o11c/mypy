@@ -90,12 +90,13 @@ class BuildResult:
 
 
 def build(program_path: str,
+          *,
           target: int,
           module: str = None,
           argument: str = None,
           program_text: Union[str, bytes] = None,
           alt_lib_path: str = None,
-          implementation: Implementation = None,
+          implementation: Implementation,
           custom_typing_module: str = None,
           report_dirs: Dict[str, str] = {},
           flags: List[str] = None,
@@ -121,7 +122,7 @@ def build(program_path: str,
     """
     flags = flags or []
     module = module or '__main__'
-    implementation = implementation or default_implementation()
+    assert implementation is not None
 
     data_dir = default_data_dir()
 
@@ -222,6 +223,10 @@ def default_lib_path(data_dir: str, target: int, implementation: Implementation,
             third_party_stubdir = os.path.join(data_dir, 'stubs', 'third-party-' + v)
             if os.path.isdir(third_party_stubdir):
                 path.append(third_party_stubdir)
+
+    path_env = os.getenv('MYPYPATH_APPEND')
+    if path_env is not None:
+        path += path_env.split(os.pathsep)
 
     # Contents of Python's sys.path go last, to prefer the stubs
     if python_path:

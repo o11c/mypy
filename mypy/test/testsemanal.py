@@ -5,8 +5,8 @@ import os.path
 from typing import Dict, List
 
 from mypy import build
-from mypy.myunit import Suite
-from mypy.test.helpers import assert_string_arrays_equal, testfile_python_implementation
+from mypy.myunit import Suite, SkipTestCaseException
+from mypy.test.helpers import assert_string_arrays_equal, testcase_python_implementation
 from mypy.test.data import parse_test_cases
 from mypy.test.config import test_data_prefix, test_temp_dir
 from mypy.errors import CompileError
@@ -43,13 +43,14 @@ def test_semanal(testcase):
     The testcase argument contains a description of the test case
     (inputs and output).
     """
+    implementation = testcase_python_implementation(testcase)
 
     try:
         src = '\n'.join(testcase.input)
         result = build.build('main',
                              target=build.SEMANTIC_ANALYSIS,
                              program_text=src,
-                             implementation=testfile_python_implementation(testcase.file),
+                             implementation=implementation,
                              flags=[build.TEST_BUILTINS],
                              alt_lib_path=test_temp_dir)
         a = []
@@ -93,12 +94,14 @@ class SemAnalErrorSuite(Suite):
 
 def test_semanal_error(testcase):
     """Perform a test case."""
+    implementation = testcase_python_implementation(testcase)
 
     try:
         src = '\n'.join(testcase.input)
         build.build('main',
                     target=build.SEMANTIC_ANALYSIS,
                     program_text=src,
+                    implementation=implementation,
                     flags=[build.TEST_BUILTINS],
                     alt_lib_path=test_temp_dir)
         raise AssertionError('No errors reported in {}, line {}'.format(
@@ -137,12 +140,15 @@ class SemAnalSymtableSuite(Suite):
 
     def run_test(self, testcase):
         """Perform a test case."""
+        implementation = testcase_python_implementation(testcase)
+
         try:
             # Build test case input.
             src = '\n'.join(testcase.input)
             result = build.build('main',
                                  target=build.SEMANTIC_ANALYSIS,
                                  program_text=src,
+                                 implementation=implementation,
                                  flags=[build.TEST_BUILTINS],
                                  alt_lib_path=test_temp_dir)
             # The output is the symbol table converted into a string.
@@ -176,12 +182,15 @@ class SemAnalTypeInfoSuite(Suite):
 
     def run_test(self, testcase):
         """Perform a test case."""
+        implementation = testcase_python_implementation(testcase)
+
         try:
             # Build test case input.
             src = '\n'.join(testcase.input)
             result = build.build('main',
                                  target=build.SEMANTIC_ANALYSIS,
                                  program_text=src,
+                                 implementation=implementation,
                                  flags=[build.TEST_BUILTINS],
                                  alt_lib_path=test_temp_dir)
 

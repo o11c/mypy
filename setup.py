@@ -3,14 +3,11 @@
 import glob
 import os
 import os.path
+import shutil
 import sys
 
 from setuptools import setup, find_packages
 from mypy.version import __version__
-
-if sys.version_info < (3, 2, 0):
-    sys.stderr.write("ERROR: You need Python 3.2 or later to use mypy.\n")
-    exit(1)
 
 version = __version__
 description = 'Optional static typing for Python'
@@ -24,22 +21,30 @@ can catch many programming errors by analyzing your program, without
 actually having to run it.  Mypy has a powerful type system with
 features such as type inference, gradual typing, generics and union
 types.
+
+In Python2 mode, this only installs the `typing` module and the
+`mypy.codec` package.
 '''.lstrip()
 
 
 classifiers = [
-    'Development Status :: 2 - Pre-Alpha',
+    'Development Status :: 3 - Alpha',
     'Environment :: Console',
     'Intended Audience :: Developers',
     'License :: OSI Approved :: MIT License',
     'Operating System :: POSIX',
+    'Programming Language :: Python :: 2.7',
     'Programming Language :: Python :: 3.2',
     'Programming Language :: Python :: 3.3',
     'Programming Language :: Python :: 3.4',
+    'Programming Language :: Python :: 3.5',
     'Topic :: Software Development',
 ]
 
-packages = find_packages(exclude=['pinfer'])
+if sys.version_info[0] == 2:
+    packages = ['mypy.codec', 'mypy.codec.test']
+else:
+    packages = find_packages(exclude=['pinfer'])
 
 
 def find_data_dirs(base, globs, cut):
@@ -57,32 +62,59 @@ def find_data_dirs(base, globs, cut):
             rv.append(os.path.join(rv_dir, pat))
     return rv
 
-package_data = {
-    'mypy': find_data_dirs('mypy/data', ['*.pyi'], 'mypy') + [
-        'xml/*.xsd',
-        'xml/*.xslt',
-        'xml/*.css',
-    ],
-    'mypy.test': [
-        'data/*.test',
-        'data/fixtures/*.pyi',
-        'data/lib-stub/*.pyi',
-    ],
-}
+if sys.version_info[0] == 2:
+    package_data = {}
+else:
+    package_data = {
+        'mypy': find_data_dirs('mypy/data', ['*.pyi'], 'mypy') + [
+            'xml/*.xsd',
+            'xml/*.xslt',
+            'xml/*.css',
+        ],
+        'mypy.test': [
+            'data/*.test',
+            'data/fixtures/*.pyi',
+            'data/lib-stub/*.pyi',
+        ],
+    }
 
-setup(name='mypy-lang',
-      version=version,
-      description=description,
-      long_description=long_description,
-      author='Jukka Lehtosalo',
-      author_email='jukka.lehtosalo@iki.fi',
-      url='http://www.mypy-lang.org/',
-      license='MIT License',
-      platforms=['POSIX'],
-      package_dir={'': 'lib-typing/3.2', 'mypy': 'mypy'},
-      py_modules=['typing'],
-      packages=packages,
-      scripts=['scripts/mypy', 'scripts/myunit'],
-      package_data=package_data,
-      classifiers=classifiers,
-      )
+if sys.version_info[0] == 2:
+    libtyping_dir = 'lib-typing/2.7'
+else:
+    libtyping_dir = 'lib-typing/3.2'
+
+if sys.version_info[0] == 2:
+    py_modules = ['typing', 'test_typing', 'mypy.__init__', 'mypy.version']
+else:
+    py_modules = ['typing', 'test_typing']
+
+if sys.version_info[0] == 2:
+    scripts = []
+else:
+    scripts = ['scripts/mypy', 'scripts/myunit']
+
+# Ensure that we don't install stale python3 files under python2 or vice versa.
+shutil.rmtree('build/lib', ignore_errors=True)
+assert not os.path.exists('build/lib')
+
+setup(
+    name='mypy-lang',
+    version=version,
+    description=description,
+    long_description=long_description,
+    author='Jukka Lehtosalo',
+    author_email='jukka.lehtosalo@iki.fi',
+    maintainer='Ben Longbons',
+    maintainer_email='brlongbons@gmail.com',
+    url='https://github.com/o11c/mypy',
+    license='MIT License',
+    platforms=['POSIX'],
+    package_dir={'': libtyping_dir, 'mypy': 'mypy'},
+    py_modules=py_modules,
+    packages=packages,
+    scripts=scripts,
+    package_data=package_data,
+    classifiers=classifiers,
+    zip_safe=False,
+    # TODO entry_points=
+)
