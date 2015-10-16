@@ -127,7 +127,7 @@ def build(program_path: str,
     data_dir = default_data_dir()
 
     # Determine the default module search path.
-    lib_path = default_lib_path(data_dir, target, implementation, python_path)
+    lib_path = default_lib_path(data_dir, implementation, python_path)
 
     if TEST_BUILTINS in flags:
         # Use stub builtins (to speed up test cases and to make them easier to
@@ -179,55 +179,55 @@ def is_installed() -> bool:
     return 'site-packages' in __file__ or 'dist-packages' in __file__
 
 
+def get_versions(dialect: Dialect) -> List[str]:
+    major = dialect.major
+    minor = dialect.minor
+    if major == 2:
+        return ['2.7', '2', '2and3']
+    else:
+        # generates list of python versions to use.
+        # For Python2, this is only [2.7].
+        # Otherwise, it is [3.4, 3.3, 3.2, 3.1, 3.0].
+        rv = ['%d.%d' % (major, i) for i in range(minor, -1, -1)]
+        return rv + ['3', '2and3']
+
+
 def default_data_dir() -> str:
     return os.path.join(os.path.dirname(__file__), 'data')
 
 
-def default_lib_path(data_dir: str, target: int, implementation: Implementation,
+def default_lib_path(data_dir: str, implementation: Implementation,
         python_path: bool) -> List[str]:
     """Return default standard library search paths."""
-    # IDEA: Make this more portable.
     path = []  # type: List[str]
 
     # Add MYPYPATH environment variable to library path, if defined.
     path_env = os.getenv('MYPYPATH')
     if path_env is not None:
-        path[:0] = path_env.split(os.pathsep)
+        path += path_env.split(os.pathsep)
 
-    # Add library stubs directory. By convention, they are stored in the
-    # stubs/x.y directory of the mypy installation. Additionally, stubs
-    # for earlier versions in the same major version will be added, and
-    # as a last resort, third-party stubs will be added.
-    major = implementation.base_dialect.major
-    minor = implementation.base_dialect.minor
-    if major == 3:
-        version_dir = '3.2'
-        third_party_dir = 'third-party-3.2'
-    else:
-        version_dir = '2.7'
-        third_party_dir = 'third-party-2.7'
-    path.append(os.path.join(data_dir, 'stubs', version_dir))
-    path.append(os.path.join(data_dir, 'stubs', third_party_dir))
-    path.append(os.path.join(data_dir, 'stubs-auto', version_dir))
-    if major == 3:
-        # Add additional stub directories.
-        versions = ['3.3', '3.4', '3.5', '3.6']
-        if False:
-            # Ick, we really should figure out how to use this again.
-            versions = ['3.%d' % i for i in range(minor, -1, -1)]
-        for v in versions:
-            stubdir = os.path.join(data_dir, 'stubs', v)
+    for component in [
+            'stubs-override',
+            'typeshed/builtins',
+            'typeshed/stdlib',
+            'typeshed/third_party',
+    ]:
+        for version in get_versions(implementation.base_dialect):
+            stubdir = os.path.join(data_dir, component, version)
             if os.path.isdir(stubdir):
                 path.append(stubdir)
-
-            third_party_stubdir = os.path.join(data_dir, 'stubs', 'third-party-' + v)
-            if os.path.isdir(third_party_stubdir):
-                path.append(third_party_stubdir)
 
     path_env = os.getenv('MYPYPATH_APPEND')
     if path_env is not None:
         path += path_env.split(os.pathsep)
 
+    for component in [
+            'stubs-auto',
+    ]:
+        for version in get_versions(implementation.base_dialect):
+            stubdir = os.path.join(data_dir, component, version)
+            if os.path.isdir(stubdir):
+                path.append(stubdir)
     # Contents of Python's sys.path go last, to prefer the stubs
     if python_path:
         path.extend(implementation.python_path)

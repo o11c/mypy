@@ -6,7 +6,7 @@ improve code clarity and to simplify localization (in the future)."""
 import re
 import difflib
 
-from typing import cast, List, Any, Sequence, Iterable
+from typing import cast, List, Any, Sequence, Iterable, Dict
 
 from mypy.errors import Errors
 from mypy.types import (

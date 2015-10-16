@@ -1,0 +1,4 @@
+# This directory is reserved for locally-generated low-quality stubs.
+# They should not be added to git from here, but manually reviewed
+# and improved and then moved to the appropriate segment of typeshed.
+*.pyi

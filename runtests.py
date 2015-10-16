@@ -27,7 +27,7 @@ if True:
 from typing import Dict, List, Optional, Set
 
 import mypy
-from mypy.build import is_installed
+from mypy.build import is_installed, get_versions
 from mypy.syntax.dialect import default_implementation
 from mypy.waiter import Waiter, LazySubprocess
 
@@ -42,18 +42,6 @@ DIALECT = IMPLEMENTATION.base_dialect
 print('Running tests for %r' % DIALECT)
 
 
-def get_versions():  # type: () -> typing.List[str]
-    major = DIALECT.major
-    minor = DIALECT.minor
-    if major == 2:
-        return ['2.7']
-    else:
-        # generates list of python versions to use.
-        # For Python2, this is only [2.7].
-        # Otherwise, it is [3.4, 3.3, 3.2, 3.1, 3.0].
-        return ['%d.%d' % (major, i) for i in range(minor, -1, -1)]
-
-
 # Ideally, all tests would be `discover`able so that they can be driven
 # (and parallelized) by an external test driver.
 
@@ -66,7 +54,7 @@ class Driver:
         self.arglist = arglist
         self.verbosity = verbosity
         self.waiter = Waiter(verbosity=verbosity, xfail=xfail)
-        self.versions = get_versions()
+        self.versions = get_versions(DIALECT)
         self.cwd = os.getcwd()
         self.env = dict(os.environ)
         self.count = 0
@@ -255,15 +243,21 @@ def add_stubs(driver: Driver) -> None:
     # Only test each module once, for the latest Python version supported.
     # The third-party stub modules will only be used if it is not in the version.
     seen = set()  # type: Set[str]
-    for version in driver.versions:
-        for pfx in ['', 'third-party-']:
-            stubdir = join('mypy/data/stubs', pfx + version)
+    for stub_type in [
+            'stubs-override',
+            'typeshed/builtins',
+            'typeshed/stdlib',
+            'typeshed/third_party',
+            'stubs-auto',
+    ]:
+        for version in driver.versions:
+            stubdir = join('mypy/data', stub_type, version)
             for f in find_files(stubdir, suffix='.pyi'):
                 module = file_to_module(f, stubdir)
                 if module not in seen:
                     seen.add(module)
                     driver.add_mypy_string(
-                        'stub (%s) module %s' % (pfx + version, module),
+                        'stub (%s) module %s' % (join(stub_type, version), module),
                         'import typing, %s' % module)
 
 
@@ -380,34 +374,42 @@ def main() -> None:
                 'check import test_typing',
                 'lint module test_typing',
                 'lint module typing',
-                'check stub (third-party-2.7) module sqlalchemy',
-                'check stub (third-party-2.7) module sqlalchemy.inspection',
-                'check stub (third-party-2.7) module sqlalchemy.schema',
-                'check stub (third-party-2.7) module sqlalchemy.types',
-                'check stub (third-party-2.7) module sqlalchemy.pool',
-                'check stub (third-party-2.7) module sqlalchemy.databases.mysql',
-                'check stub (third-party-2.7) module sqlalchemy.exc',
-                'check stub (third-party-2.7) module sqlalchemy.databases',
-                'check stub (third-party-2.7) module sqlalchemy.dialects.mysql',
-                'check stub (third-party-2.7) module sqlalchemy.dialects.mysql.base',
-                'check stub (third-party-2.7) module sqlalchemy.dialects',
-                'check stub (third-party-2.7) module sqlalchemy.util',
-                'check stub (third-party-2.7) module sqlalchemy.sql',
-                'check stub (third-party-2.7) module sqlalchemy.sql.expression',
-                'check stub (third-party-2.7) module sqlalchemy.sql.visitors',
-                'check stub (third-party-2.7) module sqlalchemy.util.langhelpers',
-                'check stub (third-party-2.7) module sqlalchemy.util._collections',
-                'check stub (third-party-2.7) module sqlalchemy.util.deprecations',
-                'check stub (third-party-2.7) module sqlalchemy.util.compat',
-                'check stub (third-party-2.7) module sqlalchemy.orm',
-                'check stub (third-party-2.7) module sqlalchemy.orm.session',
-                'check stub (third-party-2.7) module sqlalchemy.engine',
-                'check stub (third-party-2.7) module sqlalchemy.engine.url',
-                'check stub (third-party-2.7) module sqlalchemy.engine.strategies',
-                'check stub (2.7) module logging.handlers',
-                'check stub (third-party-2.7) module requests.packages.urllib3.connectionpool',
-                'check stub (third-party-2.7) module '
-                + 'requests.packages.urllib3.packages.ssl_match_hostname._implementation',
+                'check stub (typeshed/third_party/2.7) module sqlalchemy',
+                'check stub (typeshed/third_party/2.7) module sqlalchemy.inspection',
+                'check stub (typeshed/third_party/2.7) module sqlalchemy.schema',
+                'check stub (typeshed/third_party/2.7) module sqlalchemy.types',
+                'check stub (typeshed/third_party/2.7) module sqlalchemy.pool',
+                'check stub (typeshed/third_party/2.7) module sqlalchemy.databases.mysql',
+                'check stub (typeshed/third_party/2.7) module sqlalchemy.exc',
+                'check stub (typeshed/third_party/2.7) module sqlalchemy.databases',
+                'check stub (typeshed/third_party/2.7) module sqlalchemy.dialects.mysql',
+                'check stub (typeshed/third_party/2.7) module sqlalchemy.dialects.mysql.base',
+                'check stub (typeshed/third_party/2.7) module sqlalchemy.dialects',
+                'check stub (typeshed/third_party/2.7) module sqlalchemy.util',
+                'check stub (typeshed/third_party/2.7) module sqlalchemy.sql',
+                'check stub (typeshed/third_party/2.7) module sqlalchemy.sql.expression',
+                'check stub (typeshed/third_party/2.7) module sqlalchemy.sql.visitors',
+                'check stub (typeshed/third_party/2.7) module sqlalchemy.util.langhelpers',
+                'check stub (typeshed/third_party/2.7) module sqlalchemy.util._collections',
+                'check stub (typeshed/third_party/2.7) module sqlalchemy.util.deprecations',
+                'check stub (typeshed/third_party/2.7) module sqlalchemy.util.compat',
+                'check stub (typeshed/third_party/2.7) module sqlalchemy.orm',
+                'check stub (typeshed/third_party/2.7) module sqlalchemy.orm.session',
+                'check stub (typeshed/third_party/2.7) module sqlalchemy.engine',
+                'check stub (typeshed/third_party/2.7) module sqlalchemy.engine.url',
+                'check stub (typeshed/third_party/2.7) module sqlalchemy.engine.strategies',
+
+                # Stubs correct, `import as` bug in mypy - fix in other branch.
+                'check import mypy.codec.register',
+                'check import mypy.codec.mypy_codec',
+                'check import mypy.codec.tokenizer',
+                'check import mypy.codec.pytokenize',
+                'check import mypy.codec.test.test_function_translation',
+                'check stub (typeshed/third_party/2.7) module scribe.scribe',
+                'check stub (typeshed/third_party/2.7) module thrift.transport.TSocket',
+                'check stub (typeshed/third_party/2.7) module thrift.protocol.TProtocol',
+                'check stub (typeshed/third_party/2.7) module thrift.protocol.TBinaryProtocol',
+                'check codec file samples/codec/example.py',
             ])
     # Don't --use-python-path, only make mypy available.
     # Now that we're using setuptools and mypy is in an .egg directory,

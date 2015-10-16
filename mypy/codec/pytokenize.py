@@ -86,6 +86,9 @@ from __future__ import print_function
 __author__ = 'Ka-Ping Yee <ping@lfw.org>'
 __credits__ = ('GvR, ESR, Tim Peters, Thomas Wouters, Fred Drake, '
                'Skip Montanaro, Raymond Hettinger')
+if False:
+    # Don't require typing to actually be available.
+    from typing import Dict
 
 import string
 import re

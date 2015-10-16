@@ -1,0 +1,1 @@
+../../typeshed/builtins/2.7/__builtin__.pyi

@@ -2,17 +2,16 @@
 
 Basic usage:
 
-  $ mkdir out
   $ python3 -m mypy.stubgen urllib.parse
 
-  => Generate out/urllib/parse.py.
+  => Generate mypy/data/stubs-auto/urllib/parse.py.
 
 For C modules, you can get more precise function signatures by parsing .rst (Sphinx)
 documentation for extra information. For this, use the --docpath option:
 
   $ python3 -m mypy.stubgen --docpath <DIR>/Python-3.4.2/Doc/library curses
 
-  => Generate out/curses.py.
+  => Generate mypy/data/stubs-auto/curses.py.
 
 Note: You should verify the generated stubs manually.
 
@@ -75,8 +74,9 @@ def generate_stub_for_module(module, output_dir, quiet=False, add_header=False, 
 
 
 def main():
-    if not os.path.isdir('out'):
-        raise SystemExit('Directory "out" does not exist')
+    out = 'mypy/data/stubs-auto'
+    if not os.path.isdir(out):
+        raise SystemExit('Directory %r does not exist' % out)
     args = sys.argv[1:]
     sigs = {}
     class_sigs = {}
@@ -100,8 +100,9 @@ def main():
         args = args[1:]
     if not args:
         usage()
+    out = os.path.join(out, dialect.base_version[:3])
     for module in args:
-        generate_stub_for_module(module, 'out', add_header=True, sigs=sigs, class_sigs=class_sigs,
+        generate_stub_for_module(module, out, add_header=True, sigs=sigs, class_sigs=class_sigs,
                                  dialect=dialect)
 
 
