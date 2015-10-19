@@ -53,9 +53,21 @@ def submodule_revision(dir: str, submodule: str) -> bytes:
     return output.split()[1]
 
 
-def is_dirty(dir: str) -> bool:
-    """Check whether a git repository has uncommitted changes."""
-    output = subprocess.check_output(["git", "status", "-uno", "--porcelain"], cwd=dir)
+def head_contains(dir: str, expected: str) -> bool:
+    """Check if a git repository has a strictly newer commit."""
+    output = subprocess.call(["git", "merge-base", "--is-ancestor", expected, "HEAD"], cwd=dir)
+    return output == 0
+
+
+def is_dirty_cache(dir: str) -> bool:
+    """Check whether a git repository has uncommitted changes in the index."""
+    output = subprocess.check_output(["git", "diff", "--cached", "--name-only"], cwd=dir)
+    return output.strip() != b""
+
+
+def is_dirty_working(dir: str) -> bool:
+    """Check whether a git repository has unstaged changes in the working tree."""
+    output = subprocess.check_output(["git", "diff", "--name-only"], cwd=dir)
     return output.strip() != b""
 
 
@@ -70,20 +82,28 @@ def warn_no_git_executable() -> None:
           "git executable not in path.", file=sys.stderr)
 
 
-def warn_dirty(dir) -> None:
+def warn_dirty_cache(dir) -> None:
     print("Warning: git module '{}' has uncommitted changes.".format(dir),
           file=sys.stderr)
-    print("Go to the directory", file=sys.stderr)
+    print("Remember to go to the directory", file=sys.stderr)
     print("  {}".format(dir), file=sys.stderr)
-    print("and commit or reset your changes", file=sys.stderr)
+    print("and commit your changes", file=sys.stderr)
+
+
+def warn_dirty_working(dir) -> None:
+    print("Warning: git module '{}' has unstaged changes.".format(dir),
+          file=sys.stderr)
+    print("Remember to go to the directory", file=sys.stderr)
+    print("  {}".format(dir), file=sys.stderr)
+    print("and add your changes", file=sys.stderr)
 
 
 def warn_extra_files(dir) -> None:
     print("Warning: git module '{}' has untracked files.".format(dir),
           file=sys.stderr)
-    print("Go to the directory", file=sys.stderr)
+    print("Remember to go to the directory", file=sys.stderr)
     print("  {}".format(dir), file=sys.stderr)
-    print("and add & commit your new files.", file=sys.stderr)
+    print("and add or ignore your new files.", file=sys.stderr)
 
 
 def chdir_prefix(dir) -> str:
@@ -95,19 +115,24 @@ def chdir_prefix(dir) -> str:
 
 
 def error_submodule_not_initialized(name: str, dir: str) -> None:
-    print("Submodule '{}' not initialized.".format(name), file=sys.stderr)
+    print("Error: Submodule '{}' not initialized.".format(name), file=sys.stderr)
     print("Please run:", file=sys.stderr)
     print("  {}git submodule update --init {}".format(
         chdir_prefix(dir), name), file=sys.stderr)
 
 
+def warning_submodule_newer(name: str, dir: str) -> None:
+    print("Warning: Submodule '{}' has new commits.".format(name))
+    print("Remember to run:", file=sys.stderr)
+    print("  {}git add {}".format(
+        chdir_prefix(dir), name), file=sys.stderr)
+
+
 def error_submodule_not_updated(name: str, dir: str) -> None:
-    print("Submodule '{}' not updated.".format(name), file=sys.stderr)
+    print("Error: Submodule '{}' not updated.".format(name), file=sys.stderr)
     print("Please run:", file=sys.stderr)
     print("  {}git submodule update {}".format(
         chdir_prefix(dir), name), file=sys.stderr)
-    print("(If you got this message because you updated {} yourself".format(name), file=sys.stderr)
-    print(" then run \"git add {}\" to silence this check)".format(name), file=sys.stderr)
 
 
 def verify_git_integrity_or_abort(datadir: str) -> None:
@@ -127,10 +152,17 @@ def verify_git_integrity_or_abort(datadir: str) -> None:
         if not is_git_repo(submodule_path):
             error_submodule_not_initialized(submodule, datadir)
             sys.exit(1)
-        elif submodule_revision(datadir, submodule) != git_revision(submodule_path):
-            error_submodule_not_updated(submodule, datadir)
-            sys.exit(1)
-        elif is_dirty(submodule_path):
-            warn_dirty(submodule)
-        elif has_extra_files(submodule_path):
+        expected = submodule_revision(datadir, submodule)
+        actual = git_revision(submodule_path)
+        if expected != actual:
+            if head_contains(submodule_path, expected.decode("ascii")):
+                warning_submodule_newer(submodule, datadir)
+            else:
+                error_submodule_not_updated(submodule, datadir)
+                sys.exit(1)
+        if is_dirty_cache(submodule_path):
+            warn_dirty_cache(submodule)
+        if is_dirty_working(submodule_path):
+            warn_dirty_working(submodule)
+        if has_extra_files(submodule_path):
             warn_extra_files(submodule)
