@@ -335,7 +335,12 @@ def main() -> None:
 
     allow_opts = True
     curlist = whitelist
-    for a in sys.argv[1:]:
+    args = sys.argv[1:]
+    for i, a in enumerate(args, 1):
+        if curlist is not arglist and allow_opts and a.startswith('@'):
+            with open(a[1:]) as f:
+                args[i:i] = [x[:-1] for x in f]
+            continue
         if curlist is not arglist and allow_opts and a.startswith('-'):
             if curlist is not whitelist:
                 break
