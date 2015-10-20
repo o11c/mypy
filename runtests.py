@@ -61,7 +61,7 @@ class Driver:
 
     def __init__(self, whitelist: List[str], blacklist: List[str],
             arglist: List[str], verbosity: int, xfail: List[str]) -> None:
-        self.whitelist = whitelist
+        self.whitelist = whitelist or xfail
         self.blacklist = blacklist
         self.arglist = arglist
         self.verbosity = verbosity
@@ -331,6 +331,7 @@ def main() -> None:
     blacklist = []  # type: List[str]
     arglist = []  # type: List[str]
     list_only = False
+    xfail_only = False
 
     allow_opts = True
     curlist = whitelist
@@ -350,6 +351,8 @@ def main() -> None:
                 curlist = arglist
             elif a == '-l' or a == '--list':
                 list_only = True
+            elif a == '--xfail':
+                xfail_only = True
             elif a == '-h' or a == '--help':
                 usage(0)
             else:
@@ -361,8 +364,10 @@ def main() -> None:
         sys.exit('-x must be followed by a filter')
     if curlist is arglist:
         sys.exit('-a must be followed by an argument')
+    if xfail_only and whitelist:
+        sys.exit('Sorry, --xfail can only be used with blacklist right now')
     # empty string is a substring of all names
-    if not whitelist:
+    if not xfail_only and not whitelist:
         whitelist.append('')
 
     driver = Driver(whitelist=whitelist, blacklist=blacklist, arglist=arglist,
