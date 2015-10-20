@@ -413,18 +413,6 @@ def main() -> None:
                 'check stub (typeshed/third_party/2.7) module sqlalchemy.engine',
                 'check stub (typeshed/third_party/2.7) module sqlalchemy.engine.url',
                 'check stub (typeshed/third_party/2.7) module sqlalchemy.engine.strategies',
-
-                # Stubs correct, `import as` bug in mypy - fix in other branch.
-                'check import mypy.codec.register',
-                'check import mypy.codec.mypy_codec',
-                'check import mypy.codec.tokenizer',
-                'check import mypy.codec.pytokenize',
-                'check import mypy.codec.test.test_function_translation',
-                'check stub (typeshed/third_party/2.7) module scribe.scribe',
-                'check stub (typeshed/third_party/2.7) module thrift.transport.TSocket',
-                'check stub (typeshed/third_party/2.7) module thrift.protocol.TProtocol',
-                'check stub (typeshed/third_party/2.7) module thrift.protocol.TBinaryProtocol',
-                'check codec file samples/codec/example.py',
             ])
 
     if not dirty_stubs:
