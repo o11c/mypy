@@ -9,6 +9,10 @@ import sys
 from setuptools import setup, find_packages
 from mypy.version import __version__
 
+if sys.version_info[0] != 2:
+    from mypy import git
+    git.verify_git_integrity_or_abort(".")
+
 version = __version__
 description = 'Optional static typing for Python'
 long_description = '''

@@ -30,6 +30,7 @@ import mypy
 from mypy.build import is_installed, get_versions
 from mypy.syntax.dialect import default_implementation
 from mypy.waiter import Waiter, LazySubprocess
+from mypy import git
 
 import itertools
 import os
@@ -326,6 +327,7 @@ def main() -> None:
     arglist = []  # type: List[str]
     list_only = False
     xfail_only = False
+    dirty_stubs = False
 
     allow_opts = True
     curlist = whitelist
@@ -352,6 +354,8 @@ def main() -> None:
                 list_only = True
             elif a == '--xfail':
                 xfail_only = True
+            elif a == '-f' or a == '--dirty-stubs':
+                dirty_stubs = True
             elif a == '-h' or a == '--help':
                 usage(0)
             else:
@@ -411,6 +415,10 @@ def main() -> None:
                 'check stub (typeshed/third_party/2.7) module thrift.protocol.TBinaryProtocol',
                 'check codec file samples/codec/example.py',
             ])
+
+    if not dirty_stubs:
+        git.verify_git_integrity_or_abort(SOURCE_DIR)
+
     # Don't --use-python-path, only make mypy available.
     # Now that we're using setuptools and mypy is in an .egg directory,
     # this won't even catch other modules.

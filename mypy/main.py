@@ -12,6 +12,7 @@ from typing import Dict, List, Tuple
 
 from mypy import build
 from mypy.syntax.dialect import Implementation, default_implementation
+from mypy import git
 from mypy.errors import CompileError
 
 from mypy.version import __version__
@@ -26,10 +27,13 @@ class Options:
         self.custom_typing_module = None  # type: str
         self.report_dirs = {}  # type: Dict[str, str]
         self.python_path = False
+        self.dirty_stubs = False
 
 
 def main() -> None:
     path, module, program_text, options = process_options(sys.argv[1:])
+    if not options.dirty_stubs:
+        git.verify_git_integrity_or_abort(build.default_data_dir())
     try:
         if options.target == build.TYPE_CHECK:
             type_check_only(path, module, program_text, options)
@@ -101,6 +105,9 @@ def process_options(args: List[str]) -> Tuple[str, str, str, Options]:
                 fail('argument required')
             python_executable = args[1]
             args = args[2:]
+        elif args[0] == '-f' or args[0] == '--dirty-stubs':
+            options.dirty_stubs = True
+            args = args[1:]
         elif args[0] == '-m' and args[1:]:
             options.build_flags.append(build.MODULE)
             options.implementation = get_implementation(python_executable, force_py2)
