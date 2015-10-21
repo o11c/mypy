@@ -13,6 +13,7 @@ from typing import Dict, List, Tuple
 from mypy import build
 from mypy.syntax.dialect import Implementation, default_implementation
 from mypy import git
+from mypy.build import BuildSource
 from mypy.errors import CompileError
 
 from mypy.version import __version__
@@ -31,12 +32,14 @@ class Options:
 
 
 def main() -> None:
-    path, module, program_text, options = process_options(sys.argv[1:])
+    """Main entry point to the type checker.
+    """
+    sources, options = process_options(sys.argv[1:])
     if not options.dirty_stubs:
         git.verify_git_integrity_or_abort(build.default_data_dir())
     try:
         if options.target == build.TYPE_CHECK:
-            type_check_only(path, module, program_text, options)
+            type_check_only(sources, options)
         else:
             raise RuntimeError('unsupported target %d' % options.target)
     except CompileError as e:
@@ -55,12 +58,10 @@ def readlinkabs(link: str) -> str:
     return os.path.join(os.path.dirname(link), path)
 
 
-def type_check_only(path: str, module: str, program_text: str,
+def type_check_only(sources: List[BuildSource],
         options: Options) -> None:
     # Type check the program and dependencies and translate to Python.
-    build.build(path,
-                module=module,
-                program_text=program_text,
+    build.build(sources=sources,
                 target=build.TYPE_CHECK,
                 implementation=options.implementation,
                 custom_typing_module=options.custom_typing_module,
@@ -79,7 +80,7 @@ def get_implementation(python_executable: str, force_py2: bool) -> Implementatio
     return implementation
 
 
-def process_options(args: List[str]) -> Tuple[str, str, str, Options]:
+def process_options(args: List[str]) -> Tuple[List[BuildSource], Options]:
     """Process command line arguments.
 
     Return (mypy program path (or None),
@@ -111,11 +112,15 @@ def process_options(args: List[str]) -> Tuple[str, str, str, Options]:
         elif args[0] == '-m' and args[1:]:
             options.build_flags.append(build.MODULE)
             options.implementation = get_implementation(python_executable, force_py2)
-            return None, args[1], None, options
+            return [BuildSource(None, args[1], None)], options
+        elif args[0] == '-p' and args[1:]:
+            options.build_flags.append(build.MODULE)
+            options.implementation = get_implementation(python_executable, force_py2)
+            return build.find_modules_recursive(args[1], [os.getcwd()]), options
         elif args[0] == '-c' and args[1:]:
             options.build_flags.append(build.PROGRAM_TEXT)
             options.implementation = get_implementation(python_executable, force_py2)
-            return None, None, args[1], options
+            return [BuildSource(None, None, args[1])], options
         elif args[0] in ('-h', '--help'):
             help = True
             args = args[1:]
@@ -155,7 +160,7 @@ def process_options(args: List[str]) -> Tuple[str, str, str, Options]:
         usage('Extra argument: {}'.format(args[1]))
 
     options.implementation = get_implementation(python_executable, force_py2)
-    return args[0], None, None, options
+    return [BuildSource(args[0], None, None)], options
 
 
 # Don't generate this from mypy.reports, not all are meant to be public.

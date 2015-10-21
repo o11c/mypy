@@ -5,7 +5,8 @@ import os.path
 from typing import Dict, List
 
 from mypy import build
-from mypy.myunit import Suite, SkipTestCaseException
+from mypy.build import BuildSource
+from mypy.myunit import Suite
 from mypy.test.helpers import assert_string_arrays_equal, testcase_python_implementation
 from mypy.test.data import parse_test_cases
 from mypy.test.config import test_data_prefix, test_temp_dir
@@ -47,9 +48,8 @@ def test_semanal(testcase):
 
     try:
         src = '\n'.join(testcase.input)
-        result = build.build('main',
-                             target=build.SEMANTIC_ANALYSIS,
-                             program_text=src,
+        result = build.build(target=build.SEMANTIC_ANALYSIS,
+                             sources=[BuildSource('main', None, src)],
                              implementation=implementation,
                              flags=[build.TEST_BUILTINS],
                              alt_lib_path=test_temp_dir)
@@ -98,9 +98,8 @@ def test_semanal_error(testcase):
 
     try:
         src = '\n'.join(testcase.input)
-        build.build('main',
-                    target=build.SEMANTIC_ANALYSIS,
-                    program_text=src,
+        build.build(target=build.SEMANTIC_ANALYSIS,
+                    sources=[BuildSource('main', None, src)],
                     implementation=implementation,
                     flags=[build.TEST_BUILTINS],
                     alt_lib_path=test_temp_dir)
@@ -145,9 +144,8 @@ class SemAnalSymtableSuite(Suite):
         try:
             # Build test case input.
             src = '\n'.join(testcase.input)
-            result = build.build('main',
-                                 target=build.SEMANTIC_ANALYSIS,
-                                 program_text=src,
+            result = build.build(target=build.SEMANTIC_ANALYSIS,
+                                 sources=[BuildSource('main', None, src)],
                                  implementation=implementation,
                                  flags=[build.TEST_BUILTINS],
                                  alt_lib_path=test_temp_dir)
@@ -187,9 +185,8 @@ class SemAnalTypeInfoSuite(Suite):
         try:
             # Build test case input.
             src = '\n'.join(testcase.input)
-            result = build.build('main',
-                                 target=build.SEMANTIC_ANALYSIS,
-                                 program_text=src,
+            result = build.build(target=build.SEMANTIC_ANALYSIS,
+                                 sources=[BuildSource('main', None, src)],
                                  implementation=implementation,
                                  flags=[build.TEST_BUILTINS],
                                  alt_lib_path=test_temp_dir)
