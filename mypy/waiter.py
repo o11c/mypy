@@ -8,8 +8,9 @@ from typing import Dict, List, Optional, Set, Tuple
 import os
 import pipes
 import re
-from subprocess import Popen, PIPE, STDOUT
+from subprocess import Popen, STDOUT
 import sys
+import tempfile
 
 
 class WaiterError(Exception):
@@ -26,7 +27,10 @@ class LazySubprocess:
         self.env = env
 
     def __call__(self) -> Popen:
-        return Popen(self.args, cwd=self.cwd, env=self.env, stdout=PIPE, stderr=STDOUT)
+        tf = tempfile.TemporaryFile()
+        rv = Popen(self.args, cwd=self.cwd, env=self.env, stdout=tf, stderr=STDOUT)
+        rv.stdout = tf
+        return rv
 
 
 class Noter:
@@ -175,6 +179,7 @@ class Waiter:
                 fail_type = 'UPASS'
 
         # Get task output. Assume it's ascii to avoid unicode headaches (and portability issues).
+        proc.stdout.seek(0)
         output = proc.stdout.read().decode('ascii')
         num_tests, num_tests_failed = parse_test_stats_from_output(output, fail_type)
 
