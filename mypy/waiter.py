@@ -181,6 +181,7 @@ class Waiter:
         # Get task output. Assume it's ascii to avoid unicode headaches (and portability issues).
         proc.stdout.seek(0)
         output = proc.stdout.read().decode('ascii')
+        proc.stdout.close()
         num_tests, num_tests_failed = parse_test_stats_from_output(output, fail_type)
 
         if fail_type is not None or self.verbosity >= 1:

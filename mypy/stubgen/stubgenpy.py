@@ -16,7 +16,8 @@ from mypy.stubgen.stubutil import write_header
 
 def generate_stub(path, output_dir, _all_=None, target=None, add_header=False, module=None,
                   dialect=default_dialect()):
-    source = open(path, 'rb').read()
+    with open(path, 'rb') as f:
+        source = f.read()
     try:
         ast = mypy.parse.parse(source, fnam=path, dialect=dialect)
     except mypy.errors.CompileError as e:

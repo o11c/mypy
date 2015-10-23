@@ -64,6 +64,7 @@ def test_python_evaluation(testcase):
                                stderr=subprocess.STDOUT,
                                cwd=test_temp_dir)
     outb = process.stdout.read()
+    process.stdout.close()
     # Split output into lines.
     out = [s.rstrip('\n\r') for s in str(outb, 'utf8').splitlines()]
     if not process.wait():
@@ -83,6 +84,7 @@ def test_python_evaluation(testcase):
                                    cwd=test_temp_dir,
                                    env=env)
         outb = process.stdout.read()
+        process.stdout.close()
         # Split output into lines.
         out += [s.rstrip('\n\r') for s in str(outb, 'utf8').splitlines()]
     # Remove temp file.
