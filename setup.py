@@ -97,7 +97,7 @@ else:
 if sys.version_info[0] == 2:
     scripts = []
 else:
-    scripts = ['scripts/mypy', 'scripts/myunit']
+    scripts = ['scripts/mypy']
 
 # Ensure that we don't install stale python3 files under python2 or vice versa.
 shutil.rmtree('build/lib', ignore_errors=True)

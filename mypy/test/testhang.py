@@ -3,10 +3,10 @@
 import signal
 import sys
 
-from mypy.myunit import Suite
+from unittest import TestCase
 
 
-class OutputSuite(Suite):
+class OutputSuite(TestCase):
     def test_output(self):
         # This test should finish very quickly, but it may
         # hang indefinitely if stdout is redirected to a blocking pipe.

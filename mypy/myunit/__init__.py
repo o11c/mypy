@@ -1,24 +1,67 @@
+"""Just a compatibility shim, really uses unittest now."""
+
 import importlib
 import os
-import sys
-import re
 import tempfile
-import time
-import traceback
+import unittest
 
-from typing import List, Tuple, Any, Callable, Union, cast
+from typing import List, Callable
+
+
+"""
+Public interfaces to this module:
+    - python -m mypy.myunit and scripts/myunit.
+    - TestCase can be subclassed:
+        - TestCase.set_up can be overridden.
+        - TestCase.tear_down can be overridden.
+        - TestCase.run can be overridden.
+    - Suite can be subclassed:
+        - Suite.cases can be overridden.
+        - Suite.test* functions will be collected otherwise.
+        - Suite.set_up can be overridden.
+    - SkipTestCaseException can be raised within a test to cause a skip.
+    - AssertionFailure can be raised with a message that will be printed.
+    - UPDATE_TESTCASES and APPEND_TESTCASES are mutable globals.
+    - assert_equal can be used to fail.
+    - assert_true can be used to fail.
+    - assert_false can be used to fail.
+
+All other APIs are private, in particular:
+    - Suite being able to contain other Suite is not public.
+    - All the details of how tests are actually collected and run.
+
+Interface expected by `unittest`:
+    - within a module:
+        - tests are collected *only* from unittest.TestCase subclasses.
+        - the result is then passed to `load_tests` if it exists, else `unittest.TestSuite`.
+    - within a unittest.TestCase subclass:
+        - names starting with `test` are collected if they are callable.
+            - this uses `dir` and `getattr` on the class.
+        - else `runTest` if it exists, regardless of what it is!
+        - the class is "constructed" with each name as the sole argument.
+            - sneaky metaclass stuff can be done.
+            - the result must be callable.
+            - the result must *not* be a subclass of unittest.TestCase or TEstSuite.
+
+Compatibility shim:
+    - myunit.Suite is a subclass of unittest.TestCase (NOT unittest.TestSuite)
+    - the legacy class is instantiated to call init() and cases()
+    - the results are then wrapped and assigned as class attributes
+        - the wrapper must return a callable object, not a class.
+            - usually it is an *instance* of unittest.TestCase or unittest.TestSuite
+        - the input is always myunit.TestCase
+            - myunit.Suite.add_test is never called with a tuple[str, callable]
+            - myunit.Suite.add_test is only called with a tuple[str, Suite] in ListSuite
+            - make myunit.TestCase a subclass of unittest.TestCase
+"""
 
 
 # TODO remove global state
-is_verbose = False
-is_quiet = False
-patterns = []  # type: List[str]
-times = []  # type: List[Tuple[float, str]]
-APPEND_TESTCASES = ''
-UPDATE_TESTCASES = False
+APPEND_TESTCASES = os.getenv('MYPY_APPEND_TESTCASES', '')
+UPDATE_TESTCASES = bool(APPEND_TESTCASES or os.getenv('MYPY_UPDATE_TESTCASES'))
 
 
-class AssertionFailure(Exception):
+class AssertionFailure(AssertionError):
     """Exception used to signal skipped test cases."""
     def __init__(self, s: str = None) -> None:
         if s:
@@ -27,7 +70,7 @@ class AssertionFailure(Exception):
             super().__init__()
 
 
-class SkipTestCaseException(Exception): pass
+class SkipTestCaseException(unittest.SkipTest): pass
 
 
 def assert_true(b: bool, msg: str = None) -> None:
@@ -55,51 +98,6 @@ def good_repr(obj: object) -> str:
 def assert_equal(a: object, b: object, fmt: str = '{} != {}') -> None:
     if a != b:
         raise AssertionFailure(fmt.format(good_repr(a), good_repr(b)))
-
-
-def assert_not_equal(a: object, b: object, fmt: str = '{} == {}') -> None:
-    if a == b:
-        raise AssertionFailure(fmt.format(good_repr(a), good_repr(b)))
-
-
-def assert_raises(typ: type, *rest: Any) -> None:
-    """Usage: assert_raises(exception class[, message], function[, args])
-
-    Call function with the given arguments and expect an exception of the given
-    type.
-
-    TODO use overloads for better type checking
-    """
-    # Parse arguments.
-    msg = None  # type: str
-    if isinstance(rest[0], str) or rest[0] is None:
-        msg = rest[0]
-        rest = rest[1:]
-    f = rest[0]
-    args = []  # type: List[Any]
-    if len(rest) > 1:
-        args = rest[1]
-        assert len(rest) <= 2
-
-    # Perform call and verify the exception.
-    try:
-        f(*args)
-    except Exception as e:
-        assert_type(typ, e)
-        if msg:
-            assert_equal(e.args[0], msg, 'Invalid message {}, expected {}')
-    else:
-        raise AssertionFailure('No exception raised')
-
-
-def assert_type(typ: type, value: object) -> None:
-    if type(value) != typ:
-        raise AssertionFailure('Invalid type {}, expected {}'.format(
-            typename(type(value)), typename(typ)))
-
-
-def fail() -> None:
-    raise AssertionFailure()
 
 
 class TestCase:
@@ -133,11 +131,81 @@ class TestCase:
         self.tmpdir = None
 
 
-class Suite:
+class SuiteMeta(type):
+    def __new__(mcls, name, bases, dct) -> type:
+        cls = type.__new__(mcls, name, bases, dct)
+        if bases:
+            cls2 = MyunitShimMeta(name, suite_class=cls)
+            mod = importlib.import_module(cls.__module__)
+            setattr(mod, cls2.__name__, cls2)
+        return cls
+
+    def __init__(cls, name, bases, dct, **kwargs) -> None:
+        pass
+
+
+class MyunitShimMeta(type):
+    def __new__(mcls, name, *, suite_class):
+        name += 'Wrapper'
+        bases = (SuiteWrapper,)
+        dct = {}
+        cls = type.__new__(mcls, name, bases, dct)
+        cls._suite_class = suite_class
+        cls._suite_instance = None
+        return cls
+
+    def __init__(cls, *args, **kwargs):
+        pass
+
+    def __getattr__(cls, name):
+        if cls._suite_class is None:
+            raise AttributeError(name)
+        cls._finish()
+        return getattr(cls, name)
+
+    def __dir__(cls):
+        cls._finish()
+        # type.__dir__ only exists in 3.3+
+        return list(cls.__dict__.keys())
+
+    def _finish(cls):
+        if cls._suite_class is not None:
+            cls._suite_instance = suite = cls._suite_class()
+            cases = suite.cases()
+            class_name = '%s.%s' % (cls.__module__, cls.__name__)
+            for c in cases:
+                assert c.name.startswith('test')
+                setattr(cls, c.name, make_wrapper(c))
+            cls._suite_class = None
+
+
+def make_wrapper(case):
+    def do_set_up():
+        case.set_up()
+
+    def do_tear_down():
+        case.tear_down()
+
+    def do_run(self):
+        case.run()
+
+    do_run.do_set_up = do_set_up
+    do_run.do_tear_down = do_tear_down
+    do_run.__name__ = case.name
+    return do_run
+
+
+class SuiteWrapper(unittest.TestCase):
+    def setUp(self):
+        getattr(self, self._testMethodName).do_set_up()
+
+    def tearDown(self):
+        getattr(self, self._testMethodName).do_tear_down()
+
+
+class Suite(metaclass=SuiteMeta):
     def __init__(self) -> None:
-        self.prefix = typename(type(self)) + '.'
-        # Each test case is either a TestCase object or (str, function).
-        self._test_cases = []  # type: List[Any]
+        self._test_cases = []  # type: List[TestCase]
         self.init()
 
     def set_up(self) -> None:
@@ -150,222 +218,13 @@ class Suite:
         for m in dir(self):
             if m.startswith('test'):
                 t = getattr(self, m)
-                if isinstance(t, Suite):
-                    self.add_test((m + '.', t))
-                else:
-                    self.add_test(TestCase(m, self, getattr(self, m)))
+                self.add_test(TestCase(m, self, t))
 
-    def add_test(self, test: Union[TestCase,
-                                   Tuple[str, Callable[[], None]],
-                                   Tuple[str, 'Suite']]) -> None:
+    def add_test(self, test: TestCase) -> None:
         self._test_cases.append(test)
 
-    def cases(self) -> List[Any]:
+    def cases(self) -> List[TestCase]:
         return self._test_cases[:]
 
     def skip(self) -> None:
         raise SkipTestCaseException()
-
-
-def add_suites_from_module(suites: List[Suite], mod_name: str) -> None:
-    mod = importlib.import_module(mod_name)
-    got_suite = False
-    for suite in mod.__dict__.values():
-        if isinstance(suite, type) and issubclass(suite, Suite) and suite is not Suite:
-            got_suite = True
-            suites.append(cast(Callable[[], Suite], suite)())
-    if not got_suite:
-        # Sanity check in case e.g. it uses unittest instead of a myunit.
-        # The codecs tests do since they need to be python2-compatible.
-        sys.exit('Test module %s had no test!' % mod_name)
-
-
-class ListSuite(Suite):
-    def __init__(self, suites: List[Suite]) -> None:
-        for suite in suites:
-            mod_name = type(suite).__module__.replace('.', '_')
-            mod_name = mod_name.replace('mypy_', '')
-            mod_name = mod_name.replace('test_', '')
-            mod_name = mod_name.strip('_').replace('__', '_')
-            type_name = type(suite).__name__
-            name = 'test_%s_%s' % (mod_name, type_name)
-            setattr(self, name, suite)
-        super().__init__()
-
-
-def main(args: List[str] = None) -> None:
-    global patterns, is_verbose, is_quiet
-    global APPEND_TESTCASES, UPDATE_TESTCASES
-    if not args:
-        args = sys.argv[1:]
-    is_verbose = False
-    is_quiet = False
-    suites = []  # type: List[Suite]
-    patterns = []
-    i = 0
-    while i < len(args):
-        a = args[i]
-        if a == '-v':
-            is_verbose = True
-        elif a == '-q':
-            is_quiet = True
-        elif a == '-u':
-            APPEND_TESTCASES = '.new'
-            UPDATE_TESTCASES = True
-        elif a == '-i':
-            APPEND_TESTCASES = ''
-            UPDATE_TESTCASES = True
-        elif a == '-m':
-            i += 1
-            if i == len(args):
-                sys.exit('-m requires an argument')
-            add_suites_from_module(suites, args[i])
-        elif not a.startswith('-'):
-            patterns.append(a)
-        else:
-            sys.exit('Usage: python -m mypy.myunit [-v] [-q] [-u | -i]'
-                    + ' -m test.module [-m test.module ...] [filter ...]')
-        i += 1
-    if len(patterns) == 0:
-        patterns.append('*')
-    if not suites:
-        sys.exit('At least one -m argument is required')
-
-    t = ListSuite(suites)
-    num_total, num_fail, num_skip = run_test_recursive(t, 0, 0, 0, '', 0)
-
-    skip_msg = ''
-    if num_skip > 0:
-        skip_msg = ', {} skipped'.format(num_skip)
-
-    if num_fail == 0:
-        if not is_quiet:
-            print('%d test cases run%s, all passed.' % (num_total, skip_msg))
-            print('*** OK ***')
-    else:
-        sys.stderr.write('%d/%d test cases failed%s.\n' % (num_fail,
-                                                           num_total,
-                                                           skip_msg))
-        sys.stderr.write('*** FAILURE ***\n')
-        sys.exit(1)
-
-
-def run_test_recursive(test: Any, num_total: int, num_fail: int, num_skip: int,
-                       prefix: str, depth: int) -> Tuple[int, int, int]:
-    """The first argument may be TestCase, Suite or (str, Suite)."""
-    if isinstance(test, TestCase):
-        name = prefix + test.name
-        for pattern in patterns:
-            if match_pattern(name, pattern):
-                match = True
-                break
-        else:
-            match = False
-        if match:
-            is_fail, is_skip = run_single_test(name, test)
-            if is_fail: num_fail += 1
-            if is_skip: num_skip += 1
-            num_total += 1
-    else:
-        suite = None  # type: Suite
-        suite_prefix = ''
-        if isinstance(test, list) or isinstance(test, tuple):
-            suite = test[1]
-            suite_prefix = test[0]
-        else:
-            suite = test
-            suite_prefix = test.prefix
-
-        for stest in suite.cases():
-            new_prefix = prefix
-            if depth > 0:
-                new_prefix = prefix + suite_prefix
-            num_total, num_fail, num_skip = run_test_recursive(
-                stest, num_total, num_fail, num_skip, new_prefix, depth + 1)
-    return num_total, num_fail, num_skip
-
-
-def run_single_test(name: str, test: Any) -> Tuple[bool, bool]:
-    if is_verbose:
-        sys.stderr.write(name)
-        sys.stderr.flush()
-
-    time0 = time.time()
-    test.set_up()  # FIX: check exceptions
-    exc_traceback = None  # type: Any
-    try:
-        test.run()
-    except Exception:
-        exc_type, exc_value, exc_traceback = sys.exc_info()
-    test.tear_down()  # FIX: check exceptions
-    times.append((time.time() - time0, name))
-
-    if exc_traceback:
-        if isinstance(exc_value, SkipTestCaseException):
-            if is_verbose:
-                sys.stderr.write(' (skipped)\n')
-            return False, True
-        else:
-            handle_failure(name, exc_type, exc_value, exc_traceback)
-            return True, False
-    elif is_verbose:
-        sys.stderr.write('\n')
-
-    return False, False
-
-
-def handle_failure(name, exc_type, exc_value, exc_traceback) -> None:
-    # Report failed test case.
-    if is_verbose:
-        sys.stderr.write('\n\n')
-    msg = ''
-    if exc_value.args and exc_value.args[0]:
-        msg = ': ' + str(exc_value)
-    else:
-        msg = ''
-    sys.stderr.write('Traceback (most recent call last):\n')
-    tb = traceback.format_tb(exc_traceback)
-    tb = clean_traceback(tb)
-    for s in tb:
-        sys.stderr.write(s)
-    exception = typename(exc_type)
-    sys.stderr.write('{}{}\n\n'.format(exception, msg))
-    sys.stderr.write('{} failed\n\n'.format(name))
-
-
-def typename(t: type) -> str:
-    if '.' in str(t):
-        return str(t).split('.')[-1].rstrip("'>")
-    else:
-        return str(t)[8:-2]
-
-
-def match_pattern(s: str, p: str) -> bool:
-    if len(p) == 0:
-        return len(s) == 0
-    elif p[0] == '*':
-        if len(p) == 1:
-            return True
-        else:
-            for i in range(len(s) + 1):
-                if match_pattern(s[i:], p[1:]):
-                    return True
-            return False
-    elif len(s) == 0:
-        return False
-    else:
-        return s[0] == p[0] and match_pattern(s[1:], p[1:])
-
-
-def clean_traceback(tb: List[str]) -> List[str]:
-    # Remove clutter from the traceback.
-    start = 0
-    for i, s in enumerate(tb):
-        if '\n    test.run()\n' in s or '\n    self.func()\n' in s:
-            start = i + 1
-    tb = tb[start:]
-    for f in ['assert_equal', 'assert_not_equal', 'assert_type',
-              'assert_raises', 'assert_true']:
-        if tb != [] and ', in {}\n'.format(f) in tb[-1]:
-            tb = tb[:-1]
-    return tb

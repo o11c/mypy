@@ -138,23 +138,23 @@ class Driver:
         env = self.env
         self.waiter.add(LazySubprocess(name, largs, cwd=cwd, env=env))
 
-    def add_python2(self, name: str, *args: str, cwd: Optional[str] = None) -> None:
+    def add_unittest2(self, name: str, *args: str, cwd: Optional[str] = None) -> None:
         if DIALECT.major != 2:
             return
         name = 'run2 %s' % name
         if not self.allow(name):
             return
         largs = list(args)
-        largs[0:0] = [IMPLEMENTATION.executable]
+        largs[0:0] = [IMPLEMENTATION.executable, '-m', 'unittest']
         env = self.env
         self.waiter.add(LazySubprocess(name, largs, cwd=cwd, env=env))
 
-    def add_myunit(self, name: str, *args: str, cwd: Optional[str] = None) -> None:
+    def add_unittest(self, name: str, *args: str, cwd: Optional[str] = None) -> None:
         name = 'run %s' % name
         if not self.allow(name):
             return
         largs = list(args)
-        largs[0:0] = ['myunit']
+        largs[0:0] = [sys.executable, '-m', 'unittest']
         env = self.env
         self.waiter.add(LazySubprocess(name, largs, cwd=cwd, env=env))
 
@@ -181,11 +181,8 @@ def add_basic(driver: Driver) -> None:
     driver.add_flake8('file runtests.py', join(SOURCE_DIR, 'runtests.py'))
     driver.add_mypy('legacy entry script', join(SOURCE_DIR, 'scripts/mypy'))
     driver.add_flake8('legacy entry script', join(SOURCE_DIR, 'scripts/mypy'))
-    driver.add_mypy('legacy myunit script', join(SOURCE_DIR, 'scripts/myunit'))
-    driver.add_flake8('legacy myunit script', join(SOURCE_DIR, 'scripts/myunit'))
     driver.add_mypy_mod('entry mod mypy', 'mypy')
     driver.add_mypy_mod('entry mod mypy.stubgen', 'mypy.stubgen')
-    driver.add_mypy_mod('entry mod mypy.myunit', 'mypy.myunit')
 
 
 def find_files(base: str, prefix: str = '', suffix: str = '') -> List[str]:
@@ -224,21 +221,21 @@ def add_imports(driver: Driver) -> None:
             driver.add_flake8('module %s' % mod, f)
 
 
-def add_myunit(driver: Driver) -> None:
+def add_unittest(driver: Driver) -> None:
     for f in find_files('mypy', prefix='test', suffix='.py'):
         mod = file_to_module(f)
         if '.codec.test.' in mod:
-            # myunit is Python3 only.
+            # run directly with inferior python, not current python
             if DIALECT.major != 2:
-                driver.add_python_mod('unittest %s' % mod, 'unittest', mod)
+                driver.add_unittest('unit-test %s' % mod, mod, *driver.arglist)
             else:
-                driver.add_python2('unittest %s' % mod, '-m', 'unittest', mod)
+                driver.add_unittest2('unit-test %s' % mod, mod, *driver.arglist)
         elif mod == 'mypy.test.testpythoneval':
             # Run Python evaluation integration tests separetely since they are much slower
             # than proper unit tests.
-            driver.add_myunit('eval-test %s' % mod, '-m', mod, *driver.arglist)
+            driver.add_unittest('eval-test %s' % mod, mod, *driver.arglist)
         else:
-            driver.add_myunit('unit-test %s' % mod, '-m', mod, *driver.arglist)
+            driver.add_unittest('unit-test %s' % mod, mod, *driver.arglist)
 
 
 def add_stubs(driver: Driver) -> None:
@@ -305,7 +302,7 @@ def usage(status: int) -> None:
     print('  -h, --help             show this help')
     print('  -v, --verbose          increase driver verbosity')
     print('  -q, --quiet            decrease driver verbosity')
-    print('  -a, --argument ARG     pass an argument to myunit tasks')
+    print('  -a, --argument ARG     pass an argument to unittest tasks')
     print('                         (-v: verbose; glob pattern: filter by test name)')
     print('  -l, --list             list included tasks (after filtering) and exit')
     print('  FILTER                 include tasks matching FILTER')
@@ -439,7 +436,7 @@ def main() -> None:
 
     for adder in [
             add_basic,
-            add_myunit,
+            add_unittest,
             add_imports,
             add_stubs,
             add_libpython,
