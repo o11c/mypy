@@ -20,4 +20,3 @@ else:
         subprocess.check_call(['virtualenv', '-p', 'python3', sys.prefix])
         os.remove(sys.executable)
         os.symlink(orig_python, sys.executable)
-    subprocess.check_call(['python3', 'setup.py', 'install'])

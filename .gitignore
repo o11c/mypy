@@ -11,12 +11,9 @@ docs/build/
 /out/
 
 # Used by setup.py and tox
-/build/
-/dist/
 /elsewhere/
 /.tox/
-/MANIFEST
-/lib-typing/2.7/mypy_lang.egg-info/
+# tox insists on creating this even though we don't use it.
 /lib-typing/3.2/mypy_lang.egg-info/
 # Used by pytest
 /.cache/

@@ -103,6 +103,11 @@ else:
 shutil.rmtree('build/lib', ignore_errors=True)
 assert not os.path.exists('build/lib')
 
+install_requires = [
+    'flake8',
+    'pytest',
+]
+
 setup(
     name='mypy-lang',
     version=version,
@@ -122,5 +127,6 @@ setup(
     package_data=package_data,
     classifiers=classifiers,
     zip_safe=False,
+    install_requires=install_requires,
     # TODO entry_points=
 )

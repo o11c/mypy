@@ -172,7 +172,6 @@ class MyunitShimMeta(type):
         if cls._suite_class is not None:
             cls._suite_instance = suite = cls._suite_class()
             cases = suite.cases()
-            class_name = '%s.%s' % (cls.__module__, cls.__name__)
             for c in cases:
                 assert c.name.startswith('test')
                 setattr(cls, c.name, make_wrapper(c))
