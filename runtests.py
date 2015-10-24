@@ -154,7 +154,7 @@ class Driver:
         if not self.allow(name):
             return
         largs = list(args)
-        largs[0:0] = [sys.executable, '-m', 'unittest']
+        largs[0:0] = [sys.executable, '-m', 'pytest', '--pyargs']
         env = self.env
         self.waiter.add(LazySubprocess(name, largs, cwd=cwd, env=env))
 

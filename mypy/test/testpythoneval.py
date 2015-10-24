@@ -21,7 +21,7 @@ from mypy.build import is_installed
 from mypy.myunit import Suite, SkipTestCaseException
 from mypy.test.config import test_data_prefix, test_temp_dir
 from mypy.test.data import parse_test_cases
-from mypy.test.helpers import assert_string_arrays_equal, testcase_python_implementation
+from mypy.test.helpers import assert_string_arrays_equal, testcase_python_implementation, notest
 
 
 # Files which contain test case descriptions.
@@ -45,6 +45,7 @@ class PythonEvaluationSuite(Suite):
         return c
 
 
+@notest
 def test_python_evaluation(testcase):
     implementation = testcase_python_implementation(testcase)
 

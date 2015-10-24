@@ -8,7 +8,7 @@ import typing
 
 from mypy.syntax.dialect import Dialect, default_dialect
 from mypy.myunit import Suite, AssertionFailure
-from mypy.test.helpers import assert_string_arrays_equal
+from mypy.test.helpers import assert_string_arrays_equal, notest
 from mypy.test.data import parse_test_cases
 from mypy.test import config
 from mypy.parse import parse
@@ -28,6 +28,7 @@ class ParserSuite(Suite):
         return c
 
 
+@notest
 def test_parser(testcase):
     """Perform a single parser test case.
 
@@ -62,6 +63,7 @@ class ParseErrorSuite(Suite):
                                 test_parse_error)
 
 
+@notest
 def test_parse_error(testcase):
     try:
         # Compile temporary file.

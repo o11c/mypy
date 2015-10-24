@@ -18,3 +18,5 @@ docs/build/
 /MANIFEST
 /lib-typing/2.7/mypy_lang.egg-info/
 /lib-typing/3.2/mypy_lang.egg-info/
+# Used by pytest
+/.cache/

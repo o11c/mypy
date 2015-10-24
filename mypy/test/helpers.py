@@ -250,6 +250,12 @@ else:
     DEFAULT_IMPLEMENTATION_PYTHON3 = DEFAULT_IMPLEMENTATION
 
 
+def notest(f):
+    f.__test__ = False
+    return f
+
+
+@notest
 def testcase_python_implementation(testcase_: TestCase) -> Implementation:
     testcase = cast(DataDrivenTestCase, testcase_)
     assert isinstance(testcase, DataDrivenTestCase)

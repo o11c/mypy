@@ -10,7 +10,7 @@ import time
 import typing
 
 from mypy.myunit import Suite, AssertionFailure, assert_equal
-from mypy.test.helpers import assert_string_arrays_equal
+from mypy.test.helpers import assert_string_arrays_equal, notest
 from mypy.test.data import parse_test_cases
 from mypy.test import config
 from mypy.parse import parse
@@ -103,6 +103,7 @@ class StubgenPythonSuite(Suite):
         return c
 
 
+@notest
 def test_stubgen(testcase):
     if 'stubgen-test-path' not in sys.path:
         sys.path.insert(0, 'stubgen-test-path')

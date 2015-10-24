@@ -7,7 +7,7 @@ from typing import Dict, List
 from mypy import build
 from mypy.build import BuildSource
 from mypy.myunit import Suite
-from mypy.test.helpers import assert_string_arrays_equal, testcase_python_implementation
+from mypy.test.helpers import assert_string_arrays_equal, testcase_python_implementation, notest
 from mypy.test.data import parse_test_cases
 from mypy.test.config import test_data_prefix, test_temp_dir
 from mypy.errors import CompileError
@@ -38,6 +38,7 @@ class SemAnalSuite(Suite):
         return c
 
 
+@notest
 def test_semanal(testcase):
     """Perform a semantic analysis test case.
 
@@ -92,6 +93,7 @@ class SemAnalErrorSuite(Suite):
         return c
 
 
+@notest
 def test_semanal_error(testcase):
     """Perform a test case."""
     implementation = testcase_python_implementation(testcase)
