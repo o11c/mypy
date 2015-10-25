@@ -128,10 +128,10 @@ class MemoryXmlReporter(AbstractReporter):
         with open(path) as input_file:
             for lineno, line_text in enumerate(input_file, 1):
                 status = visitor.line_map.get(lineno, stats.TYPE_EMPTY)
-                file_info.counts[status] += 1
+                file_info.counts[status.value] += 1
                 etree.SubElement(root, 'line',
                                  number=str(lineno),
-                                 precision=stats.precision_names[status],
+                                 precision=stats.precision_names[status.value],
                                  content=line_text[:-1])
         # Assumes a layout similar to what XmlReporter uses.
         xslt_path = os.path.relpath('mypy-html.xslt', path)

@@ -10,14 +10,14 @@ import mypy.constraints
 # Circular import; done in the function instead.
 # import mypy.solve
 from mypy import messages, sametypes
-from mypy.nodes import CONTRAVARIANT, COVARIANT
+from mypy.nodes import CONTRAVARIANT, COVARIANT, Variance
 from mypy.maptype import map_instance_to_supertype
 
 
-TypeParameterChecker = Callable[[Type, Type, int], bool]
+TypeParameterChecker = Callable[[Type, Type, Variance], bool]
 
 
-def check_type_parameter(lefta: Type, righta: Type, variance: int) -> bool:
+def check_type_parameter(lefta: Type, righta: Type, variance: Variance) -> bool:
     if variance == COVARIANT:
         return is_subtype(lefta, righta, check_type_parameter)
     elif variance == CONTRAVARIANT:
@@ -50,7 +50,7 @@ def is_subtype(left: Type, right: Type,
 
 
 def is_subtype_ignoring_tvars(left: Type, right: Type) -> bool:
-    def ignore_tvars(s: Type, t: Type, v: int) -> bool:
+    def ignore_tvars(s: Type, t: Type, v: Variance) -> bool:
         return True
     return is_subtype(left, right, ignore_tvars)
 
@@ -295,7 +295,7 @@ def is_proper_subtype(t: Type, s: Type) -> bool:
             if not t.type.has_base(s.type.fullname()):
                 return False
 
-            def check_argument(left: Type, right: Type, variance: int) -> bool:
+            def check_argument(left: Type, right: Type, variance: Variance) -> bool:
                 if variance == COVARIANT:
                     return is_proper_subtype(left, right)
                 elif variance == CONTRAVARIANT:

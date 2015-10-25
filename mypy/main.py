@@ -13,7 +13,7 @@ from typing import Dict, List, Tuple
 from mypy import build
 from mypy.syntax.dialect import Implementation, default_implementation
 from mypy import git
-from mypy.build import BuildSource
+from mypy.build import BuildSource, BuildFlag
 from mypy.errors import CompileError
 
 from mypy.version import __version__
@@ -23,7 +23,7 @@ class Options:
     def __init__(self) -> None:
         # Set default options.
         self.target = build.TYPE_CHECK
-        self.build_flags = []  # type: List[str]
+        self.build_flags = []  # type: List[BuildFlag]
         self.implementation = None  # type: Implementation
         self.custom_typing_module = None  # type: str
         self.report_dirs = {}  # type: Dict[str, str]
@@ -41,7 +41,7 @@ def main() -> None:
         if options.target == build.TYPE_CHECK:
             type_check_only(sources, options)
         else:
-            raise RuntimeError('unsupported target %d' % options.target)
+            raise RuntimeError('unsupported target %s' % options.target.name)
     except CompileError as e:
         for m in e.messages:
             sys.stderr.write(m + '\n')

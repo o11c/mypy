@@ -6,6 +6,7 @@ tokens.
 This module can be run as a script (lex.py FILE).
 """
 
+from enum import Enum
 import re
 
 from mypy.syntax.dialect import Dialect, default_dialect
@@ -133,7 +134,7 @@ class Bom(Token):
 class LexError(Token):
     """Lexer error token"""
 
-    def __init__(self, string: str, type: int, message: str = None) -> None:
+    def __init__(self, string: str, type: 'LexErrorType', message: str = None) -> None:
         """Initialize token.
 
         The type argument is one of the error types below.
@@ -150,12 +151,19 @@ class LexError(Token):
 
 
 # Lexer error types
-NUMERIC_LITERAL_ERROR = 0
-UNTERMINATED_STRING_LITERAL = 1
-INVALID_CHARACTER = 2
-DECODE_ERROR = 3
-INVALID_BACKSLASH = 4
-INVALID_DEDENT = 5
+class LexErrorType(Enum):
+    NUMERIC_LITERAL_ERROR = 0
+    UNTERMINATED_STRING_LITERAL = 1
+    INVALID_CHARACTER = 2
+    DECODE_ERROR = 3
+    INVALID_BACKSLASH = 4
+    INVALID_DEDENT = 5
+NUMERIC_LITERAL_ERROR = LexErrorType.NUMERIC_LITERAL_ERROR
+UNTERMINATED_STRING_LITERAL = LexErrorType.UNTERMINATED_STRING_LITERAL
+INVALID_CHARACTER = LexErrorType.INVALID_CHARACTER
+DECODE_ERROR = LexErrorType.DECODE_ERROR
+INVALID_BACKSLASH = LexErrorType.INVALID_BACKSLASH
+INVALID_DEDENT = LexErrorType.INVALID_DEDENT
 
 
 def lex(string: Union[str, bytes], first_line: int = 1,

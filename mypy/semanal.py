@@ -40,6 +40,8 @@ TODO: Check if the third pass slows down type checking significantly.
   traverse the entire AST.
 """
 
+from enum import Enum
+
 from typing import (
     List, Dict, Set, Tuple, cast, Any, overload, TypeVar, Union, Optional
 )
@@ -59,7 +61,7 @@ from mypy.nodes import (
     ComparisonExpr, StarExpr, ARG_POS, ARG_NAMED, MroError, type_aliases,
     YieldFromStmt, YieldFromExpr, NamedTupleExpr, NonlocalDecl,
     SetComprehension, DictionaryComprehension, TYPE_ALIAS, TypeAliasExpr,
-    YieldExpr, ExecStmt, COVARIANT, CONTRAVARIANT, INVARIANT
+    YieldExpr, ExecStmt, COVARIANT, CONTRAVARIANT, INVARIANT, Variance, ArgKind
 )
 from mypy.visitor import NodeVisitor
 from mypy.traverser import TraverserVisitor
@@ -82,9 +84,13 @@ T = TypeVar('T')
 
 
 # Inferred value of an expression.
-ALWAYS_TRUE = 0
-ALWAYS_FALSE = 1
-TRUTH_VALUE_UNKNOWN = 2
+class Truthiness(Enum):
+    ALWAYS_TRUE = 0
+    ALWAYS_FALSE = 1
+    TRUTH_VALUE_UNKNOWN = 2
+ALWAYS_TRUE = Truthiness.ALWAYS_TRUE
+ALWAYS_FALSE = Truthiness.ALWAYS_FALSE
+TRUTH_VALUE_UNKNOWN = Truthiness.TRUTH_VALUE_UNKNOWN
 
 # Map from obsolete name to the current spelling.
 obsolete_name_mapping = {
@@ -1135,8 +1141,8 @@ class SemanticAnalyzer(NodeVisitor):
 
     def process_typevar_parameters(self, args: List[Node],
                                    names: List[Optional[str]],
-                                   kinds: List[int],
-                                   context: Context) -> Optional[int]:
+                                   kinds: List[ArgKind],
+                                   context: Context) -> Optional[Variance]:
         covariant = False
         contravariant = False
         for param_value, param_name, param_kind in zip(args, names, kinds):
@@ -2256,7 +2262,7 @@ def infer_reachability_of_if_statement(s: IfStmt,
             break
 
 
-def infer_if_condition_value(expr: Node, dialect: Dialect) -> int:
+def infer_if_condition_value(expr: Node, dialect: Dialect) -> Truthiness:
     """Infer whether if condition is always true/false.
 
     Return ALWAYS_TRUE if always true, ALWAYS_FALSE if always false,

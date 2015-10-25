@@ -107,6 +107,8 @@ install_requires = [
     'flake8',
     'pytest',
 ]
+if sys.version_info[:2] < (3, 4):
+    install_requires.append('enum34')
 
 setup(
     name='mypy-lang',

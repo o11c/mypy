@@ -14,7 +14,7 @@ from mypy.nodes import (
     ListComprehension, GeneratorExpr, SetExpr, MypyFile, Decorator,
     ConditionalExpr, ComparisonExpr, TempNode, SetComprehension,
     DictionaryComprehension, ComplexExpr, EllipsisExpr, LITERAL_TYPE,
-    TypeAliasExpr, YieldExpr
+    TypeAliasExpr, YieldExpr, ArgKind
 )
 from mypy.errors import Errors
 from mypy.nodes import function_type
@@ -128,7 +128,7 @@ class ExpressionChecker:
                                e.arg_names, callable_node=e.callee)[0]
 
     def check_call(self, callee: Type, args: List[Node],
-                   arg_kinds: List[int], context: Context,
+                   arg_kinds: List[ArgKind], context: Context,
                    arg_names: List[str] = None,
                    callable_node: Node = None,
                    arg_messages: MessageBuilder = None) -> Tuple[Type, Type]:
@@ -246,7 +246,7 @@ class ExpressionChecker:
         return res
 
     def infer_arg_types_in_context2(
-            self, callee: CallableType, args: List[Node], arg_kinds: List[int],
+            self, callee: CallableType, args: List[Node], arg_kinds: List[ArgKind],
             formal_to_actual: List[List[int]]) -> List[Type]:
         """Infer argument expression types using a callable type as context.
 
@@ -313,7 +313,7 @@ class ExpressionChecker:
 
     def infer_function_type_arguments(self, callee_type: CallableType,
                                       args: List[Node],
-                                      arg_kinds: List[int],
+                                      arg_kinds: List[ArgKind],
                                       formal_to_actual: List[List[int]],
                                       context: Context) -> CallableType:
         """Infer the type arguments for a generic callee type.
@@ -365,7 +365,7 @@ class ExpressionChecker:
     def infer_function_type_arguments_pass2(
             self, callee_type: CallableType,
             args: List[Node],
-            arg_kinds: List[int],
+            arg_kinds: List[ArgKind],
             formal_to_actual: List[List[int]],
             inferred_args: List[Type],
             context: Context) -> Tuple[CallableType, List[Type]]:
@@ -438,7 +438,7 @@ class ExpressionChecker:
                                                            inferred_args, context))
 
     def check_argument_count(self, callee: CallableType, actual_types: List[Type],
-                             actual_kinds: List[int], actual_names: List[str],
+                             actual_kinds: List[ArgKind], actual_names: List[str],
                              formal_to_actual: List[List[int]],
                              context: Context) -> None:
         """Check that the number of arguments to a function are valid.
@@ -490,7 +490,7 @@ class ExpressionChecker:
                 # Positional argument when expecting a keyword argument.
                 self.msg.too_many_positional_arguments(callee, context)
 
-    def check_argument_types(self, arg_types: List[Type], arg_kinds: List[int],
+    def check_argument_types(self, arg_types: List[Type], arg_kinds: List[ArgKind],
                              callee: CallableType,
                              formal_to_actual: List[List[int]],
                              context: Context,
@@ -1383,9 +1383,9 @@ def is_valid_argc(nargs: int, is_var_arg: bool, callable: CallableType) -> bool:
         return nargs <= len(callable.arg_types) and nargs >= callable.min_args
 
 
-def map_actuals_to_formals(caller_kinds: List[int],
+def map_actuals_to_formals(caller_kinds: List[ArgKind],
                            caller_names: List[str],
-                           callee_kinds: List[int],
+                           callee_kinds: List[ArgKind],
                            callee_names: List[str],
                            caller_arg_type: Callable[[int],
                                                      Type]) -> List[List[int]]:
@@ -1454,7 +1454,7 @@ def is_empty_tuple(t: Type) -> bool:
     return isinstance(t, TupleType) and not cast(TupleType, t).items
 
 
-def is_duplicate_mapping(mapping: List[int], actual_kinds: List[int]) -> bool:
+def is_duplicate_mapping(mapping: List[int], actual_kinds: List[ArgKind]) -> bool:
     # Multiple actuals can map to the same formal only if they both come from
     # varargs (*args and **kwargs); in this case at runtime it is possible that
     # there are no duplicates. We need to allow this, as the convention

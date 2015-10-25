@@ -21,7 +21,7 @@ from mypy.nodes import (
     LITERAL_TYPE, BreakStmt, ContinueStmt, ComparisonExpr, StarExpr,
     YieldFromExpr, YieldFromStmt, NamedTupleExpr, SetComprehension,
     DictionaryComprehension, ComplexExpr, EllipsisExpr, TypeAliasExpr,
-    RefExpr, YieldExpr, CONTRAVARIANT, COVARIANT
+    RefExpr, YieldExpr, CONTRAVARIANT, COVARIANT, TypeKind
 )
 from mypy.nodes import function_type, method_type, method_type_with_fallback
 from mypy import nodes
@@ -1968,7 +1968,7 @@ class TypeChecker(NodeVisitor[Type]):
     def is_dynamic_function(self) -> bool:
         return len(self.dynamic_funcs) > 0 and self.dynamic_funcs[-1]
 
-    def lookup(self, name: str, kind: int) -> SymbolTableNode:
+    def lookup(self, name: str, kind: TypeKind) -> SymbolTableNode:
         """Look up a definition from the symbol table with the given name.
         TODO remove kind argument
         """

@@ -1,6 +1,7 @@
 """Utilities for calculating and reporting statistics about types."""
 
 import cgi
+from enum import Enum
 import os.path
 import re
 
@@ -18,10 +19,27 @@ from mypy.nodes import (
 )
 
 
-TYPE_EMPTY = 0
-TYPE_PRECISE = 1
-TYPE_IMPRECISE = 2
-TYPE_ANY = 3
+class PrecisionType(Enum):
+    TYPE_EMPTY = 0
+    TYPE_PRECISE = 1
+    TYPE_IMPRECISE = 2
+    TYPE_ANY = 3
+
+    def __lt__(self, other):
+        return self.value < other.value
+
+    def __le__(self, other):
+        return self.value <= other.value
+
+    def __gt__(self, other):
+        return self.value > other.value
+
+    def __ge__(self, other):
+        return self.value >= other.value
+TYPE_EMPTY = PrecisionType.TYPE_EMPTY
+TYPE_PRECISE = PrecisionType.TYPE_PRECISE
+TYPE_IMPRECISE = PrecisionType.TYPE_IMPRECISE
+TYPE_ANY = PrecisionType.TYPE_ANY
 
 precision_names = [
     'empty',
@@ -51,7 +69,7 @@ class StatisticsVisitor(TraverserVisitor):
 
         self.line = -1
 
-        self.line_map = {}  # type: Dict[int, int]
+        self.line_map = {}  # type: Dict[int, PrecisionType]
 
         self.output = []  # type: List[str]
 
@@ -194,7 +212,7 @@ class StatisticsVisitor(TraverserVisitor):
     def log(self, string: str) -> None:
         self.output.append(string)
 
-    def record_line(self, line: int, precision: int) -> None:
+    def record_line(self, line: int, precision: PrecisionType) -> None:
         self.line_map[line] = max(precision,
                                   self.line_map.get(line, TYPE_PRECISE))
 

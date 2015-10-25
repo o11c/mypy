@@ -1,5 +1,6 @@
 """Abstract syntax tree node classes (i.e. parse tree)."""
 
+from enum import Enum
 import os
 import re
 from abc import abstractmethod, ABCMeta
@@ -32,22 +33,47 @@ T = TypeVar('T')
 #
 # TODO rename to use more descriptive names
 
-LDEF = 0  # type: int
-GDEF = 1  # type: int
-MDEF = 2  # type: int
-MODULE_REF = 3  # type: int
-# Type variable declared using TypeVar(...) has kind UNBOUND_TVAR. It's not
-# valid as a type. A type variable is valid as a type (kind TVAR) within
-# (1) a generic class that uses the type variable as a type argument or
-# (2) a generic function that refers to the type variable in its signature.
-UNBOUND_TVAR = 4  # type: int
-BOUND_TVAR = 5  # type: int
-TYPE_ALIAS = 6  # type: int
+class TypeKind(Enum):
+    LDEF = 0
+    GDEF = 1
+    MDEF = 2
+    MODULE_REF = 3
+    # Type variable declared using TypeVar(...) has kind UNBOUND_TVAR. It's not
+    # valid as a type. A type variable is valid as a type (kind TVAR) within
+    # (1) a generic class that uses the type variable as a type argument or
+    # (2) a generic function that refers to the type variable in its signature.
+    UNBOUND_TVAR = 4
+    BOUND_TVAR = 5
+    TYPE_ALIAS = 6
+LDEF = TypeKind.LDEF
+GDEF = TypeKind.GDEF
+MDEF = TypeKind.MDEF
+MODULE_REF = TypeKind.MODULE_REF
+UNBOUND_TVAR = TypeKind.UNBOUND_TVAR
+BOUND_TVAR = TypeKind.BOUND_TVAR
+TYPE_ALIAS = TypeKind.TYPE_ALIAS
 
 
-LITERAL_YES = 2
-LITERAL_TYPE = 1
-LITERAL_NO = 0
+# TODO @functools.total_ordering
+class Literal(Enum):
+    LITERAL_YES = 2
+    LITERAL_TYPE = 1
+    LITERAL_NO = 0
+
+    def __lt__(self, other):
+        return self.value < other.value
+
+    def __le__(self, other):
+        return self.value <= other.value
+
+    def __gt__(self, other):
+        return self.value > other.value
+
+    def __ge__(self, other):
+        return self.value >= other.value
+LITERAL_YES = Literal.LITERAL_YES
+LITERAL_TYPE = Literal.LITERAL_TYPE
+LITERAL_NO = Literal.LITERAL_NO
 
 node_kinds = {
     LDEF: 'Ldef',
@@ -256,7 +282,7 @@ class OverloadedFuncDef(FuncBase):
 
 class FuncItem(FuncBase):
     args = None  # type: List[Var]  # Argument names
-    arg_kinds = None  # type: List[int]  # Kinds of arguments (ARG_*)
+    arg_kinds = None  # type: List[ArgKind]  # Kinds of arguments (ARG_*)
 
     # Initialization expessions for fixed args; None if no initializer
     init = None  # type: List[AssignmentStmt]
@@ -275,7 +301,7 @@ class FuncItem(FuncBase):
     # Variants of function with type variables with values expanded
     expanded = None  # type: List[FuncItem]
 
-    def __init__(self, args: List['Var'], arg_kinds: List[int],
+    def __init__(self, args: List['Var'], arg_kinds: List['ArgKind'],
                  init: List[Node], body: 'Block',
                  typ: 'mypy.types.FunctionLike' = None) -> None:
         self.args = args
@@ -338,7 +364,7 @@ class FuncDef(FuncItem):
     def __init__(self,
                  name: str,              # Function name
                  args: List['Var'],      # Argument names
-                 arg_kinds: List[int],   # Arguments kinds (nodes.ARG_*)
+                 arg_kinds: List['ArgKind'],   # Arguments kinds (nodes.ARG_*)
                  init: List[Node],       # Initializers (each may be None)
                  body: 'Block',
                  typ: 'mypy.types.FunctionLike' = None) -> None:
@@ -863,7 +889,7 @@ class StarExpr(Node):
 class RefExpr(Node):
     """Abstract base class for name-like constructs"""
 
-    kind = None  # type: int      # LDEF/GDEF/MDEF/... (None if not available)
+    kind = None  # type: TypeKind # LDEF/GDEF/MDEF/... (None if not available)
     node = None  # type: Node        # Var, FuncDef or TypeInfo that describes this
     fullname = None  # type: str  # Fully qualified name (or name if not global)
 
@@ -917,16 +943,22 @@ class MemberExpr(RefExpr):
 
 # Kinds of arguments
 
-# Positional argument
-ARG_POS = 0  # type: int
-# Positional, optional argument (functions only, not calls)
-ARG_OPT = 1  # type: int
-# *arg argument
-ARG_STAR = 2  # type: int
-# Keyword argument x=y in call, or keyword-only function arg
-ARG_NAMED = 3  # type: int
-# **arg argument
-ARG_STAR2 = 4  # type: int
+class ArgKind(Enum):
+    # Positional argument
+    ARG_POS = 0
+    # Positional, optional argument (functions only, not calls)
+    ARG_OPT = 1
+    # *arg argument
+    ARG_STAR = 2
+    # Keyword argument x=y in call, or keyword-only function arg
+    ARG_NAMED = 3
+    # **arg argument
+    ARG_STAR2 = 4
+ARG_POS = ArgKind.ARG_POS  # type: ArgKind
+ARG_OPT = ArgKind.ARG_OPT  # type: ArgKind
+ARG_STAR = ArgKind.ARG_STAR  # type: ArgKind
+ARG_NAMED = ArgKind.ARG_NAMED  # type: ArgKind
+ARG_STAR2 = ArgKind.ARG_STAR2  # type: ArgKind
 
 
 class CallExpr(Node):
@@ -938,14 +970,14 @@ class CallExpr(Node):
 
     callee = None  # type: Node
     args = None  # type: List[Node]
-    arg_kinds = None  # type: List[int]  # ARG_ constants
+    arg_kinds = None  # type: List[ArgKind]  # ARG_ constants
     # Each name can be None if not a keyword argument.
     arg_names = None  # type: List[str]
     # If not None, the node that represents the meaning of the CallExpr. For
     # cast(...) this is a CastExpr.
     analyzed = None  # type: Node
 
-    def __init__(self, callee: Node, args: List[Node], arg_kinds: List[int],
+    def __init__(self, callee: Node, args: List[Node], arg_kinds: List[ArgKind],
                  arg_names: List[str] = None, analyzed: Node = None) -> None:
         if not arg_names:
             arg_names = [None] * len(args)
@@ -1346,9 +1378,13 @@ class TypeApplication(Node):
 #
 # If T is contravariant in Foo[T], Foo[object] is a subtype of
 # Foo[int], but not vice versa.
-INVARIANT = 0  # type: int
-COVARIANT = 1  # type: int
-CONTRAVARIANT = 2  # type: int
+class Variance(Enum):
+    INVARIANT = 0
+    COVARIANT = 1
+    CONTRAVARIANT = 2
+INVARIANT = Variance.INVARIANT  # type: Variance
+COVARIANT = Variance.COVARIANT  # type: Variance
+CONTRAVARIANT = Variance.CONTRAVARIANT  # type: Variance
 
 
 class TypeVarExpr(SymbolNode):
@@ -1367,7 +1403,7 @@ class TypeVarExpr(SymbolNode):
 
     def __init__(self, name: str, fullname: str,
                  values: List['mypy.types.Type'],
-                 variance: int=INVARIANT) -> None:
+                 variance: Variance = INVARIANT) -> None:
         self._name = name
         self._fullname = fullname
         self.values = values
@@ -1619,7 +1655,7 @@ class TypeInfo(SymbolNode):
 
 class SymbolTableNode:
     # LDEF/GDEF/MDEF/UNBOUND_TVAR/TVAR/...
-    kind = None  # type: int
+    kind = None  # type: TypeKind
     # AST node of definition (FuncDef/Var/TypeInfo/Decorator/TypeVarExpr,
     # or None for a bound type variable).
     node = None  # type: SymbolNode
@@ -1633,7 +1669,7 @@ class SymbolTableNode:
     # This has no effect on names within classes.
     module_public = True
 
-    def __init__(self, kind: int, node: SymbolNode, mod_id: str = None,
+    def __init__(self, kind: TypeKind, node: SymbolNode, mod_id: str = None,
                  typ: 'mypy.types.Type' = None, tvar_id: int = 0,
                  module_public: bool = True) -> None:
         self.kind = kind

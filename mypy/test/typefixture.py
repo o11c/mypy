@@ -10,7 +10,7 @@ from mypy.types import (
 )
 from mypy.nodes import (
     TypeInfo, ClassDef, Block, ARG_POS, ARG_OPT, ARG_STAR, SymbolTable,
-    COVARIANT)
+    COVARIANT, Variance)
 
 
 class TypeFixture:
@@ -19,7 +19,7 @@ class TypeFixture:
     The members are initialized to contain various type-related values.
     """
 
-    def __init__(self, variance: int=COVARIANT) -> None:
+    def __init__(self, variance: Variance = COVARIANT) -> None:
         # The 'object' class
         self.oi = self.make_type_info('builtins.object')               # class object
         self.o = Instance(self.oi, [])                        # object
@@ -184,7 +184,7 @@ class TypeFixture:
                        mro: List[TypeInfo] = None,
                        bases: List[Instance] = None,
                        typevars: List[str] = None,
-                       variances: List[int] = None) -> TypeInfo:
+                       variances: List[Variance] = None) -> TypeInfo:
         """Make a TypeInfo suitable for use in unit tests."""
 
         class_def = ClassDef(name, Block([]), None, [])

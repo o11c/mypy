@@ -1,10 +1,11 @@
 """Classes for representing mypy types."""
 
 from abc import abstractmethod
+from enum import Enum
 from typing import Any, TypeVar, List, Tuple, cast, Generic, Set, Sequence
 
 import mypy.nodes
-from mypy.nodes import INVARIANT
+from mypy.nodes import INVARIANT, Variance, ArgKind
 
 
 T = TypeVar('T')
@@ -35,11 +36,11 @@ class TypeVarDef(mypy.nodes.Context):
     id = 0
     values = None  # type: List[Type]
     upper_bound = None  # type: Type
-    variance = INVARIANT  # type: int
+    variance = INVARIANT
     line = 0
 
     def __init__(self, name: str, id: int, values: List[Type],
-                 upper_bound: Type, variance: int = INVARIANT, line: int = -1) -> None:
+                 upper_bound: Type, variance: Variance = INVARIANT, line: int = -1) -> None:
         self.name = name
         self.id = id
         self.values = values
@@ -190,10 +191,10 @@ class TypeVarType(Type):
     values = None  # type: List[Type]  # Value restriction, empty list if no restriction
     upper_bound = None  # type: Type   # Upper bound for values (currently always 'object')
     # See comments in TypeVarDef for more about variance.
-    variance = INVARIANT  # type: int
+    variance = INVARIANT
 
     def __init__(self, name: str, id: int, values: List[Type], upper_bound: Type,
-                 variance: int = INVARIANT, line: int = -1) -> None:
+                 variance: Variance = INVARIANT, line: int = -1) -> None:
         self.name = name
         self.id = id
         self.values = values
@@ -228,7 +229,7 @@ class CallableType(FunctionLike):
     """Type of a non-overloaded callable object (function)."""
 
     arg_types = None  # type: List[Type]  # Types of function arguments
-    arg_kinds = None  # type: List[int]   # mypy.nodes.ARG_ constants
+    arg_kinds = None  # type: List[ArgKind]  # mypy.nodes.ARG_ constants
     arg_names = None  # type: List[str]   # None if not a keyword argument
     min_args = 0                    # Minimum number of arguments
     is_var_arg = False              # Is it a varargs function?
@@ -256,7 +257,7 @@ class CallableType(FunctionLike):
     is_ellipsis_args = False
 
     def __init__(self, arg_types: List[Type],
-                 arg_kinds: List[int],
+                 arg_kinds: List[ArgKind],
                  arg_names: List[str],
                  ret_type: Type,
                  fallback: Instance,
@@ -773,8 +774,11 @@ class TypeStrVisitor(TypeVisitor[str]):
 # These constants define the method used by TypeQuery to combine multiple
 # query results, e.g. for tuple types. The strategy is not used for empty
 # result lists; in that case the default value takes precedence.
-ANY_TYPE_STRATEGY = 0   # Return True if any of the results are True.
-ALL_TYPES_STRATEGY = 1  # Return True if all of the results are True.
+class TypeStrategy(Enum):
+    ANY_TYPE_STRATEGY = 0   # Return True if any of the results are True.
+    ALL_TYPES_STRATEGY = 1  # Return True if all of the results are True.
+ANY_TYPE_STRATEGY = TypeStrategy.ANY_TYPE_STRATEGY
+ALL_TYPES_STRATEGY = TypeStrategy.ALL_TYPES_STRATEGY
 
 
 class TypeQuery(TypeVisitor[bool]):
@@ -785,9 +789,9 @@ class TypeQuery(TypeVisitor[bool]):
     """
 
     default = False  # Default result
-    strategy = 0     # Strategy for combining multiple values (ANY_TYPE_STRATEGY or ALL_TYPES_...).
+    strategy = ANY_TYPE_STRATEGY  # Strategy for combining multiple values
 
-    def __init__(self, default: bool, strategy: int) -> None:
+    def __init__(self, default: bool, strategy: TypeStrategy) -> None:
         """Construct a query visitor.
 
         Use the given default result and strategy for combining

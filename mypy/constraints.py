@@ -2,6 +2,8 @@
 
 from typing import List, cast
 
+from enum import Enum
+
 from mypy.types import (
     CallableType, Type, TypeVisitor, UnboundType, AnyType, Void, NoneTyp, TypeVarType,
     Instance, TupleType, UnionType, Overloaded, ErasedType, is_named_instance
@@ -9,11 +11,15 @@ from mypy.types import (
 from mypy.expandtype import expand_caller_var_args
 from mypy.maptype import map_instance_to_supertype
 from mypy import nodes
+from mypy.nodes import ArgKind
 import mypy.subtypes
 
 
-SUBTYPE_OF = 0  # type: int
-SUPERTYPE_OF = 1  # type: int
+class ConstraintOp(Enum):
+    SUBTYPE_OF = 0
+    SUPERTYPE_OF = 1
+SUBTYPE_OF = ConstraintOp.SUBTYPE_OF  # type: ConstraintOp
+SUPERTYPE_OF = ConstraintOp.SUPERTYPE_OF  # type: ConstraintOp
 
 
 class Constraint:
@@ -23,10 +29,10 @@ class Constraint:
     """
 
     type_var = 0   # Type variable id
-    op = 0         # SUBTYPE_OF or SUPERTYPE_OF
+    op = SUBTYPE_OF  # SUBTYPE_OF or SUPERTYPE_OF
     target = None  # type: Type
 
-    def __init__(self, type_var: int, op: int, target: Type) -> None:
+    def __init__(self, type_var: int, op: ConstraintOp, target: Type) -> None:
         self.type_var = type_var
         self.op = op
         self.target = target
@@ -39,7 +45,7 @@ class Constraint:
 
 
 def infer_constraints_for_callable(
-        callee: CallableType, arg_types: List[Type], arg_kinds: List[int],
+        callee: CallableType, arg_types: List[Type], arg_kinds: List[ArgKind],
         formal_to_actual: List[List[int]]) -> List[Constraint]:
     """Infer type variable constraints for a callable and actual arguments.
 
@@ -60,7 +66,7 @@ def infer_constraints_for_callable(
     return constraints
 
 
-def get_actual_type(arg_type: Type, kind: int,
+def get_actual_type(arg_type: Type, kind: ArgKind,
                     tuple_counter: List[int]) -> Type:
     """Return the type of an actual argument with the given kind.
 
@@ -97,7 +103,7 @@ def get_actual_type(arg_type: Type, kind: int,
 
 
 def infer_constraints(template: Type, actual: Type,
-                      direction: int) -> List[Constraint]:
+                      direction: ConstraintOp) -> List[Constraint]:
     """Infer type constraints.
 
     Match a template type, which may contain type variable references,
@@ -129,7 +135,7 @@ class ConstraintBuilderVisitor(TypeVisitor[List[Constraint]]):
     # TODO: The value may be None. Is that actually correct?
     actual = None  # type: Type
 
-    def __init__(self, actual: Type, direction: int) -> None:
+    def __init__(self, actual: Type, direction: ConstraintOp) -> None:
         # Direction must be SUBTYPE_OF or SUPERTYPE_OF.
         self.actual = actual
         self.direction = direction
@@ -287,7 +293,7 @@ def negate_constraints(constraints: List[Constraint]) -> List[Constraint]:
     return res
 
 
-def neg_op(op: int) -> int:
+def neg_op(op: ConstraintOp) -> ConstraintOp:
     """Map SubtypeOf to SupertypeOf and vice versa."""
 
     if op == SUBTYPE_OF:

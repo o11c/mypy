@@ -8,6 +8,7 @@ from mypy.types import (
 )
 from mypy.lex import Token, Name, StrLit, Break, lex
 from mypy import nodes
+from mypy.nodes import ArgKind
 
 
 none = Token('')  # Empty token
@@ -222,7 +223,7 @@ def parse_signature(tokens: List[Token]) -> Tuple[CallableType, int]:
         raise TypeParseError(tokens[i], i)
     i += 1
     arg_types = []  # type: List[Type]
-    arg_kinds = []  # type: List[int]
+    arg_kinds = []  # type: List[ArgKind]
     while tokens[i].string != ')':
         if tokens[i].string == '*':
             arg_kinds.append(nodes.ARG_STAR)

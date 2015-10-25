@@ -26,7 +26,7 @@ from mypy.nodes import (
     FloatExpr, CallExpr, SuperExpr, MemberExpr, IndexExpr, SliceExpr, OpExpr,
     UnaryExpr, FuncExpr, TypeApplication, PrintStmt, ImportBase, ComparisonExpr,
     StarExpr, YieldFromStmt, YieldFromExpr, NonlocalDecl, DictionaryComprehension,
-    SetComprehension, ComplexExpr, EllipsisExpr, YieldExpr, ExecStmt
+    SetComprehension, ComplexExpr, EllipsisExpr, YieldExpr, ExecStmt, ArgKind
 )
 from mypy.syntax.dialect import Dialect, default_dialect
 from mypy import nodes
@@ -94,7 +94,7 @@ class Argument:
     in the future.
     """
     def __init__(self, variable: Var, type: Optional[Type],
-            initializer: Optional[Node], kind: int) -> None:
+            initializer: Optional[Node], kind: ArgKind) -> None:
         self.variable = variable
         self.type = type
         self.initializer = initializer
@@ -447,7 +447,7 @@ class Parser:
             self.errors.pop_function()
             self.is_class_body = is_method
 
-    def check_argument_kinds(self, funckinds: List[int], sigkinds: List[int],
+    def check_argument_kinds(self, funckinds: List[ArgKind], sigkinds: List[ArgKind],
                              line: int) -> None:
         """Check that * and ** arguments are consistent.
 
@@ -633,8 +633,8 @@ class Parser:
         else:
             return None
 
-    def verify_argument_kinds(self, kinds: List[int], line: int) -> None:
-        found = set()  # type: Set[int]
+    def verify_argument_kinds(self, kinds: List[ArgKind], line: int) -> None:
+        found = set()  # type: Set[ArgKind]
         for i, kind in enumerate(kinds):
             if kind == nodes.ARG_POS and found & set([nodes.ARG_OPT,
                                                       nodes.ARG_STAR,
@@ -1473,7 +1473,7 @@ class Parser:
         node = CallExpr(callee, args, kinds, names)
         return node
 
-    def parse_arg_expr(self) -> Tuple[List[Node], List[int], List[str]]:
+    def parse_arg_expr(self) -> Tuple[List[Node], List[ArgKind], List[str]]:
         """Parse arguments in a call expression (within '(' and ')').
 
         Return a tuple with these items:
@@ -1482,7 +1482,7 @@ class Parser:
           argument names (for named arguments; None for ordinary args)
         """
         args = []   # type: List[Node]
-        kinds = []  # type: List[int]
+        kinds = []  # type: List[ArgKind]
         names = []  # type: List[str]
         var_arg = False
         dict_arg = False

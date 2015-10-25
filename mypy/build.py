@@ -9,6 +9,7 @@ file.  The individual passes are implemented in separate modules.
 The function build() is the main interface to this module.
 """
 
+from enum import Enum
 import os
 import os.path
 import shlex
@@ -38,41 +39,71 @@ debug = False
 
 
 # Build targets (for selecting compiler passes)
-SEMANTIC_ANALYSIS = 0   # Semantic analysis only
-TYPE_CHECK = 1          # Type check
+class BuildTarget(Enum):
+    SEMANTIC_ANALYSIS = 0   # Semantic analysis only
+    TYPE_CHECK = 1          # Type check
+
+    def __lt__(self, other):
+        return self.value < other.value
+
+    def __le__(self, other):
+        return self.value <= other.value
+
+    def __gt__(self, other):
+        return self.value > other.value
+
+    def __ge__(self, other):
+        return self.value >= other.value
+SEMANTIC_ANALYSIS = BuildTarget.SEMANTIC_ANALYSIS
+TYPE_CHECK = BuildTarget.TYPE_CHECK
 
 
 # Build flags
-VERBOSE = 'verbose'              # More verbose messages (for troubleshooting)
-MODULE = 'module'                # Build module as a script
-PROGRAM_TEXT = 'program-text'    # Build command-line argument as a script
-TEST_BUILTINS = 'test-builtins'  # Use stub builtins to speed up tests
-DUMP_TYPE_STATS = 'dump-type-stats'
-DUMP_INFER_STATS = 'dump-infer-stats'
+class BuildFlag(Enum):
+    VERBOSE = 'verbose'              # More verbose messages (for troubleshooting)
+    MODULE = 'module'                # Build module as a script
+    PROGRAM_TEXT = 'program-text'    # Build command-line argument as a script
+    TEST_BUILTINS = 'test-builtins'  # Use stub builtins to speed up tests
+    DUMP_TYPE_STATS = 'dump-type-stats'
+    DUMP_INFER_STATS = 'dump-infer-stats'
+VERBOSE = BuildFlag.VERBOSE
+MODULE = BuildFlag.MODULE
+PROGRAM_TEXT = BuildFlag.PROGRAM_TEXT
+TEST_BUILTINS = BuildFlag.TEST_BUILTINS
+DUMP_TYPE_STATS = BuildFlag.DUMP_TYPE_STATS
+DUMP_INFER_STATS = BuildFlag.DUMP_INFER_STATS
+
 
 # State ids. These describe the states a source file / module can be in a
 # build.
 
-# We aren't processing this source file yet (no associated state object).
-UNSEEN_STATE = 0
-# The source file has a state object, but we haven't done anything with it yet.
-UNPROCESSED_STATE = 1
-# We've parsed the source file.
-PARSED_STATE = 2
-# We've done the first two passes of semantic analysis.
-PARTIAL_SEMANTIC_ANALYSIS_STATE = 3
-# We've semantically analyzed the source file.
-SEMANTICALLY_ANALYSED_STATE = 4
-# We've type checked the source file (and all its dependencies).
-TYPE_CHECKED_STATE = 5
+class StateId(Enum):
+    # We aren't processing this source file yet (no associated state object).
+    UNSEEN_STATE = 0
+    # The source file has a state object, but we haven't done anything with it yet.
+    UNPROCESSED_STATE = 1
+    # We've parsed the source file.
+    PARSED_STATE = 2
+    # We've done the first two passes of semantic analysis.
+    PARTIAL_SEMANTIC_ANALYSIS_STATE = 3
+    # We've semantically analyzed the source file.
+    SEMANTICALLY_ANALYSED_STATE = 4
+    # We've type checked the source file (and all its dependencies).
+    TYPE_CHECKED_STATE = 5
+UNSEEN_STATE = StateId.UNSEEN_STATE
+UNPROCESSED_STATE = StateId.UNPROCESSED_STATE
+PARSED_STATE = StateId.PARSED_STATE
+PARTIAL_SEMANTIC_ANALYSIS_STATE = StateId.PARTIAL_SEMANTIC_ANALYSIS_STATE
+SEMANTICALLY_ANALYSED_STATE = StateId.SEMANTICALLY_ANALYSED_STATE
+TYPE_CHECKED_STATE = StateId.TYPE_CHECKED_STATE
 
 PYTHON_EXTENSIONS = ['.pyi', '.py']
 
 final_state = TYPE_CHECKED_STATE
 
 
-def earlier_state(s: int, t: int) -> bool:
-    return s < t
+def earlier_state(s: StateId, t: StateId) -> bool:
+    return s.value < t.value
 
 
 class BuildResult:
@@ -113,12 +144,12 @@ class BuildSource:
 
 def build(sources: List[BuildSource],
           *,
-          target: int,
+          target: BuildTarget,
           alt_lib_path: str = None,
           implementation: Implementation,
           custom_typing_module: str = None,
           report_dirs: Dict[str, str] = {},
-          flags: List[str] = None,
+          flags: List[BuildFlag] = None,
           python_path: bool = False) -> BuildResult:
     """Analyze a program.
 
@@ -312,9 +343,9 @@ class BuildManager:
 
     def __init__(self, data_dir: str,
                  lib_path: List[str],
-                 target: int,
+                 target: BuildTarget,
                  dialect: Dialect,
-                 flags: List[str],
+                 flags: List[BuildFlag],
                  ignore_prefix: str,
                  custom_typing_module: str,
                  reports: Reports) -> None:
@@ -414,7 +445,7 @@ class BuildManager:
         """Have we seen a module yet?"""
         return name in self.module_files
 
-    def file_state(self, path: str) -> int:
+    def file_state(self, path: str) -> StateId:
         """Return the state of a source file.
 
         In particular, return UNSEEN_STATE if the file has no associated
@@ -427,7 +458,7 @@ class BuildManager:
                 return s.state()
         return UNSEEN_STATE
 
-    def module_state(self, name: str) -> int:
+    def module_state(self, name: str) -> StateId:
         """Return the state of a module.
 
         In particular, return UNSEEN_STATE if the file has no associated
@@ -525,7 +556,7 @@ class BuildManager:
         if self.target in [SEMANTIC_ANALYSIS, TYPE_CHECK]:
             pass  # Nothing to do.
         else:
-            raise RuntimeError('Unsupported target %d' % self.target)
+            raise RuntimeError('Unsupported target %s' % self.target.name)
 
     def log(self, message: str) -> None:
         if VERBOSE in self.flags:
@@ -615,7 +646,7 @@ class State:
         """Return the number of dependencies that are ready but incomplete."""
         return 0  # Does not matter in this state
 
-    def state(self) -> int:
+    def state(self) -> StateId:
         raise RuntimeError('Not implemented')
 
     def switch_state(self, state_object: 'State') -> None:
@@ -755,7 +786,7 @@ class UnprocessedFile(State):
             self.errors().raise_error()
         return tree
 
-    def state(self) -> int:
+    def state(self) -> StateId:
         return UNPROCESSED_STATE
 
 
@@ -805,7 +836,7 @@ class ParsedFile(State):
                 incomplete += 1
         return incomplete
 
-    def state(self) -> int:
+    def state(self) -> StateId:
         return PARSED_STATE
 
 
@@ -817,7 +848,7 @@ class PartiallySemanticallyAnalyzedFile(ParsedFile):
             stats.dump_type_stats(self.tree, self.tree.path)
         self.switch_state(SemanticallyAnalyzedFile(self.info(), self.tree))
 
-    def state(self) -> int:
+    def state(self) -> StateId:
         return PARTIAL_SEMANTIC_ANALYSIS_STATE
 
 
@@ -835,7 +866,7 @@ class SemanticallyAnalyzedFile(ParsedFile):
 
         self.switch_state(TypeCheckedFile(self.info(), self.tree))
 
-    def state(self) -> int:
+    def state(self) -> StateId:
         return SEMANTICALLY_ANALYSED_STATE
 
 
@@ -848,7 +879,7 @@ class TypeCheckedFile(SemanticallyAnalyzedFile):
         """Finished, so cannot ever become ready."""
         return False
 
-    def state(self) -> int:
+    def state(self) -> StateId:
         return TYPE_CHECKED_STATE
 
 

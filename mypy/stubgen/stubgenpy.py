@@ -1,3 +1,4 @@
+from enum import Enum
 import json
 import os.path
 import subprocess
@@ -70,13 +71,21 @@ def load_python2_module_info(module):
 
 
 # What was generated previously.
-EMPTY = 'EMPTY'
-FUNC = 'FUNC'
-CLASS = 'CLASS'
-EMPTY_CLASS = 'EMPTY_CLASS'
-VAR = 'VAR'
-IMPORT_ALIAS = 'IMPORT_ALIAS'
-NOT_IN_ALL = 'NOT_IN_ALL'
+class What(Enum):
+    EMPTY = 'EMPTY'
+    FUNC = 'FUNC'
+    CLASS = 'CLASS'
+    EMPTY_CLASS = 'EMPTY_CLASS'
+    VAR = 'VAR'
+    IMPORT_ALIAS = 'IMPORT_ALIAS'
+    NOT_IN_ALL = 'NOT_IN_ALL'
+EMPTY = What.EMPTY
+FUNC = What.FUNC
+CLASS = What.CLASS
+EMPTY_CLASS = What.EMPTY_CLASS
+VAR = What.VAR
+IMPORT_ALIAS = What.IMPORT_ALIAS
+NOT_IN_ALL = What.NOT_IN_ALL
 
 
 class StubGenerator(mypy.traverser.TraverserVisitor):
