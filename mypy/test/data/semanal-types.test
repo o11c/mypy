@@ -1398,7 +1398,7 @@ def f(x: (int, int)) -> None: pass
 main: note: In function "f":
 main:1: error: Invalid tuple literal type
 
-[case tesQualifiedTypeNameBasedOnAny]
+[case testQualifiedTypeNameBasedOnAny]
 from typing import Any
 x = 0 # type: Any
 z = 0 # type: x.y
