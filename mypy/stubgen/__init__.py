@@ -4,7 +4,7 @@ Basic usage:
 
   $ python3 -m mypy.stubgen urllib.parse
 
-  => Generate mypy/data/stubs-auto/urllib/parse.py.
+  => Generate mypy/data/stubs-auto/urllib/parse.pyi.
 
 For C modules, you can get more precise function signatures by parsing .rst (Sphinx)
 documentation for extra information. For this, use the --docpath option:
@@ -19,7 +19,7 @@ TODO:
 
  - infer some return types, such as no return statement with value -> None
  - detect 'if PY2 / is_py2' etc. and either preserve those or only include Python 2 or 3 case
- - maybe export more imported names if there is no __all__ (this affect ssl.SSLError, for example)
+ - maybe export more imported names if there is no __all__ (this affects ssl.SSLError, for example)
    - a quick and dirty heuristic would be to turn this on if a module has something like
      'from x import y as _y'
  - we don't seem to always detect properties ('closed' in 'io', for example)
@@ -31,7 +31,7 @@ import importlib
 import os.path
 import sys
 
-from typing import Any
+from typing import Any, Dict
 
 from mypy.syntax.dialect import Dialect, default_dialect, default_implementation
 from mypy.stubgen.stubgenc import (
@@ -43,8 +43,10 @@ from mypy.stubgen.stubgenpy import (
 from mypy.stubgen.stubutil import is_c_module
 
 
-def generate_stub_for_module(module, output_dir, quiet=False, add_header=False, sigs={},
-                             class_sigs={}, dialect=default_dialect()):
+def generate_stub_for_module(module: str, output_dir: str, quiet: bool = False,
+                             add_header: bool = False, sigs: Dict[str, str] = {},
+                             class_sigs: Dict[str, str] = {},
+                             dialect: Dialect = default_dialect()) -> None:
     if dialect.major == 2:
         module_path, module_all = load_python2_module_info(module)
     else:
