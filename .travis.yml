@@ -11,6 +11,14 @@ notifications:
   irc:
     channels:
       - "chat.freenode.net##mypy"
+      - "chat.freenode.net#o11c"
+    template:
+      # Watch https://github.com/travis-ci/travis-core/pull/368
+      # Currently, dynamic green/red for pass/fail is not possible.
+      - "\x02%{result}\x02 %{repository_slug}@\x0306%{branch}\x03 in %{duration} (by %{author})"
+      - "commit \x0310%{commit}\x03: %{commit_subject}"
+      - "Changes: %{compare_url}"
+      - "Build #%{build_number}: %{build_url}"
     use_notice: true
 
 matrix:
