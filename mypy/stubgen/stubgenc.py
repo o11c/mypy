@@ -146,8 +146,8 @@ def generate_c_type_stub(module, class_name, obj, output, sigs={}, class_sigs={}
             continue
         if attr not in done:
             variables.append('%s = ... # type: Any' % attr)
-    all_bases = obj.mro()[1:]
-    if all_bases[-1] is object:
+    all_bases = type(obj).mro(obj)[1:]
+    if all_bases and all_bases[-1] is object:
         # TODO: Is this always object?
         del all_bases[-1]
     # Remove base classes of other bases as redundant.
