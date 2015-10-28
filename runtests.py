@@ -251,7 +251,7 @@ def add_stubs(driver: Driver) -> None:
     ]:
         for version in driver.versions:
             stubdir = join('mypy/data', stub_type, version)
-            for f in find_files(stubdir, suffix='.pyi'):
+            for f in find_files(stubdir, suffix='.pyi') + find_files(stubdir, suffix='.py'):
                 module = file_to_module(f, stubdir)
                 if module not in seen:
                     seen.add(module)

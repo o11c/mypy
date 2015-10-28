@@ -70,8 +70,8 @@ if sys.version_info[0] == 2:
     package_data = {}
 else:
     package_data = {
-        'mypy': find_data_dirs('mypy/data', ['*.pyi'], 'mypy')
-        + find_data_dirs('mypy/data/typeshed', ['*.pyi'], 'mypy')
+        'mypy': find_data_dirs('mypy/data', ['*.py', '*.pyi'], 'mypy')
+        + find_data_dirs('mypy/data/typeshed', ['*.py', '*.pyi'], 'mypy')
         + [
             'xml/*.xsd',
             'xml/*.xslt',
